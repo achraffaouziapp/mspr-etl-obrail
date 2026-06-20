@@ -1,14 +1,8 @@
 """
-Extraction - European Sleeper Timetable
+Extrait et structure les données European Sleeper utilisées dans le projet.
 
-Source officielle :
-https://www.europeansleeper.eu/timetable
-
-Ce script télécharge la page officielle du timetable European Sleeper
-et génère des fichiers bruts structurés dans data/raw/european_sleeper/.
-
-Les horaires utilisés sont structurés dans le script afin d'avoir une extraction
-reproductible pour le projet MSPR.
+La page officielle du timetable est téléchargée pour garder la preuve de la source.
+Les gares, routes et horaires nécessaires à l'ETL sont ensuite écrits dans des CSV bruts.
 """
 
 import json
@@ -23,6 +17,7 @@ ROOT_DIR = Path(__file__).resolve().parents[2]
 RAW_DIR = ROOT_DIR / "data" / "raw" / "european_sleeper"
 RAW_DIR.mkdir(parents=True, exist_ok=True)
 
+# Données structurées utilisées pour produire une source night reproductible.
 SOURCE_URL = "https://www.europeansleeper.eu/timetable"
 
 
@@ -273,7 +268,7 @@ ROUTE_PATTERNS = [
 
 
 STOP_TIMES = [
-    # ES 453 - horaires visibles sur le timetable officiel du 19/20 juin 2026.
+
     ["ES 453", 1, "ES_BRUXELLES_MIDI", "", "19:22:00", "", 0],
     ["ES 453", 2, "ES_ANTWERPEN_CENTRAAL", "19:58:00", "20:02:00", 0, 0],
     ["ES 453", 3, "ES_ROOSENDAAL", "20:41:00", "20:44:00", 0, 0],
@@ -289,7 +284,7 @@ STOP_TIMES = [
     ["ES 453", 13, "ES_USTI_NAD_LABEM_HLN", "10:45:00", "10:45:00", 1, 1],
     ["ES 453", 14, "ES_PRAGUE_HLN", "11:45:00", "", 1, ""],
 
-    # ES 452 - sens retour structuré pour l'analyse des trains de nuit.
+
     ["ES 452", 1, "ES_PRAGUE_HLN", "", "18:04:00", "", 0],
     ["ES 452", 2, "ES_USTI_NAD_LABEM_HLN", "19:04:00", "19:05:00", 0, 0],
     ["ES 452", 3, "ES_DECIN_HLN", "19:35:00", "19:36:00", 0, 0],
@@ -305,7 +300,7 @@ STOP_TIMES = [
     ["ES 452", 13, "ES_ANTWERPEN_CENTRAAL", "10:16:00", "10:20:00", 1, 1],
     ["ES 452", 14, "ES_BRUXELLES_MIDI", "11:00:00", "", 1, ""],
 
-    # ES 474 - horaires visibles sur le timetable officiel du 19/20 juin 2026.
+
     ["ES 474", 1, "ES_BERLIN_SPANDAU", "", "19:48:00", "", 0],
     ["ES 474", 2, "ES_LIEGE_GUILLEMINS", "05:45:00", "05:47:00", 1, 1],
     ["ES 474", 3, "ES_BRUXELLES_MIDI", "07:08:00", "07:21:00", 1, 1],
@@ -313,7 +308,7 @@ STOP_TIMES = [
     ["ES 474", 5, "ES_AULNOYE_AYMERIES", "08:35:00", "08:56:00", 1, 1],
     ["ES 474", 6, "ES_PARIS_NORD", "11:28:00", "", 1, ""],
 
-    # ES 475 - sens retour structuré pour l'analyse des trains de nuit.
+
     ["ES 475", 1, "ES_PARIS_NORD", "", "19:12:00", "", 0],
     ["ES 475", 2, "ES_AULNOYE_AYMERIES", "21:25:00", "21:45:00", 0, 0],
     ["ES 475", 3, "ES_MONS", "22:18:00", "22:22:00", 0, 0],
@@ -324,6 +319,11 @@ STOP_TIMES = [
 
 
 def download_source_page() -> dict:
+    """
+    Télécharge la page officielle European Sleeper et la sauvegarde en HTML.
+
+    Cette copie brute sert de preuve de source et complète les fichiers structurés utilisés ensuite.
+    """
     response = requests.get(
         SOURCE_URL,
         timeout=30,
@@ -342,6 +342,11 @@ def download_source_page() -> dict:
 
 
 def main():
+    """
+    Point d'entrée du script.
+
+    Cette fonction organise les étapes dans le bon ordre et affiche des messages de suivi dans le terminal.
+    """
     print("Extraction European Sleeper...")
 
     download_info = download_source_page()

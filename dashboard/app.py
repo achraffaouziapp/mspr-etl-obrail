@@ -20,10 +20,8 @@ from visualisation import (
 )
 
 
-# ============================================================
-# Configuration Streamlit
-# ============================================================
-
+# Configure la page Streamlit avant d'afficher le contenu.
+# Le mode wide donne plus d'espace aux graphiques et rend le dashboard plus lisible.
 st.set_page_config(
     page_title="ObRail Europe - Dashboard Pro",
     page_icon="🚆",
@@ -31,10 +29,8 @@ st.set_page_config(
 )
 
 
-# ============================================================
-# Style professionnel
-# ============================================================
-
+# Style CSS du dashboard.
+# Ce bloc personnalise l'apparence générale : cartes, titres, onglets, métriques et encadrés explicatifs.
 st.markdown(
     """
     <style>
@@ -122,35 +118,23 @@ st.markdown(
             padding: 10px 18px;
             background-color: #F8FAFC;
             border: 1px solid #E5E7EB;
+            border-bottom: none !important;
+            box-shadow: none !important;
         }
 
         .stTabs [aria-selected="true"] {
             background-color: #E0F2FE !important;
             color: #0369A1 !important;
             border: 1px solid #7DD3FC !important;
+        }
+
+        .stTabs [data-baseweb="tab-highlight"] {
+            display: none !important;
         }
 
         hr {
             margin-top: 2rem;
             margin-bottom: 2rem;
-        }
-
-        /* Supprime la ligne rouge sous l'onglet actif */
-        .stTabs [data-baseweb="tab-highlight"] {
-            display: none !important;
-        }
-
-        /* Supprime aussi la bordure/ligne active éventuelle */
-        .stTabs [data-baseweb="tab"] {
-            border-bottom: none !important;
-            box-shadow: none !important;
-        }
-
-        /* Garde un style propre pour l'onglet sélectionné */
-        .stTabs [aria-selected="true"] {
-            background-color: #E0F2FE !important;
-            color: #0369A1 !important;
-            border: 1px solid #7DD3FC !important;
         }
     </style>
     """,
@@ -159,27 +143,48 @@ st.markdown(
 
 
 def section(title: str, subtitle: str = ""):
+    """
+    Affiche un titre de section avec un sous-titre optionnel.
+
+    Cette fonction évite de répéter le même HTML à chaque nouvelle partie du dashboard.
+    """
     st.markdown(f'<div class="section-title">{title}</div>', unsafe_allow_html=True)
     if subtitle:
         st.markdown(f'<div class="section-subtitle">{subtitle}</div>', unsafe_allow_html=True)
 
 
 def chart_block(fig):
+    """
+    Affiche un graphique Plotly dans une carte visuelle.
+
+    La carte ajoute de l'espace, une bordure et une ombre pour donner un rendu plus professionnel.
+    """
     st.markdown('<div class="chart-card">', unsafe_allow_html=True)
     st.plotly_chart(fig, use_container_width=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
 
 def table_block(df):
+    """
+    Affiche un tableau dans une carte visuelle.
+
+    Cette fonction est utilisée pour présenter les données détaillées de manière lisible.
+    """
     st.markdown('<div class="table-card">', unsafe_allow_html=True)
     st.dataframe(df, use_container_width=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
 
 def explanation_block(text: str):
+    """
+    Affiche un encadré explicatif sous une visualisation.
+
+    Ces textes permettent à un lecteur non technique de comprendre le sens du graphique.
+    """
     st.markdown(f'<div class="explanation-box">{text}</div>', unsafe_allow_html=True)
 
 
+# En-tête principal du dashboard.
 st.markdown(
     '<div class="dashboard-title">🚆 ObRail Europe — Dashboard analytique</div>',
     unsafe_allow_html=True
@@ -190,10 +195,8 @@ st.markdown(
 )
 
 
-# ============================================================
-# Connexion DB
-# ============================================================
-
+# Vérifie dès le démarrage que le dashboard peut communiquer avec PostgreSQL.
+# Si la connexion échoue, l'application s'arrête pour éviter d'afficher des graphiques vides.
 try:
     test_database_connection()
     st.sidebar.success("PostgreSQL connecté")
@@ -203,10 +206,8 @@ except Exception as error:
     st.stop()
 
 
-# ============================================================
-# Sidebar
-# ============================================================
-
+# Barre latérale réservée aux filtres d'exploration des trajets.
+# Ces filtres ne changent pas les graphiques globaux, ils s'appliquent uniquement au tableau de la page Réseau.
 st.sidebar.title("Filtres exploration trajets")
 
 train_types_df = load_train_type_options()
@@ -231,10 +232,9 @@ st.sidebar.info(
     "dans la page Réseau ferroviaire."
 )
 
-# ============================================================
-# KPI
-# ============================================================
 
+# Charge les indicateurs globaux affichés en haut du dashboard.
+# Ces métriques donnent une vision rapide du volume total des données.
 kpi_df = load_global_kpis()
 kpi = kpi_df.iloc[0]
 
@@ -264,20 +264,13 @@ with col7:
     st.metric("Complétude coordonnées", f"{format_float(kpi['coordinate_completion_rate'])} %")
 
 
-# ============================================================
-# Onglets
-# ============================================================
-
+# Organisation du dashboard en trois pages principales.
 tab_exec, tab_transport, tab_network = st.tabs([
     "Vue exécutive",
     "Analyse transport",
     "Réseau ferroviaire"
 ])
 
-
-# ============================================================
-# 1. Vue exécutive
-# ============================================================
 
 with tab_exec:
     section(
@@ -289,7 +282,6 @@ with tab_exec:
     stations_country_df = load_stations_by_country()
     train_type_stats_df = load_train_type_stats()
 
-    # Diagramme simple, non logarithmique : volume de trajets par source.
     fig_sources = create_horizontal_bar_chart(
         source_stats_df,
         x_col="total_trips",
@@ -306,7 +298,6 @@ with tab_exec:
         "sur les trains de nuit. Cette différence est conservée car elle reflète les données réelles."
     )
 
-    # Graphique séparé jour / nuit.
     fig_train_types = create_horizontal_bar_chart(
         train_type_stats_df,
         x_col="total_trips",
@@ -331,14 +322,6 @@ with tab_exec:
     chart_block(fig_countries)
 
 
-# ============================================================
-# 2. Analyse transport
-# ============================================================
-
-# ============================================================
-# 2. Analyse transport
-# ============================================================
-
 with tab_transport:
     section(
         "Analyse transport",
@@ -347,10 +330,6 @@ with tab_transport:
 
     operators_df = load_top_operators(limit=15)
     counts_df = load_source_train_type_counts()
-
-    # --------------------------------------------------------
-    # Graphique 1 : Top opérateurs
-    # --------------------------------------------------------
 
     fig_operators = create_horizontal_bar_chart(
         operators_df,
@@ -368,10 +347,6 @@ with tab_transport:
         "une source GTFS nationale contenant un grand nombre de services."
     )
 
-    # --------------------------------------------------------
-    # Graphique 2 : Sunburst source -> type de train
-    # --------------------------------------------------------
-
     fig_sunburst = create_sunburst_chart(
         counts_df,
         height=720
@@ -386,18 +361,13 @@ with tab_transport:
         "Les sous-segments de même couleur appartiennent à la même source. "
         "La taille de chaque segment est proportionnelle au nombre de trajets chargés dans la base."
     )
+
     explanation_block(
-    "Le bleu correspond à SNCF GTFS, l'orange à Back-on-Track Night Train Data et le vert à European Sleeper Timetable. "
-    "Le centre du diagramme représente les sources de données, tandis que l'anneau extérieur indique le type de train associé : day ou night. "
-    "La taille de chaque segment est proportionnelle au nombre de trajets chargés dans PostgreSQL."
+        "Le bleu correspond à SNCF GTFS, l'orange à Back-on-Track Night Train Data et le vert à European Sleeper Timetable. "
+        "Le centre du diagramme représente les sources de données, tandis que l'anneau extérieur indique le type de train associé : day ou night. "
+        "La taille de chaque segment est proportionnelle au nombre de trajets chargés dans PostgreSQL."
     )
 
-
-
-
-# ============================================================
-# 3. Réseau ferroviaire
-# ============================================================
 
 with tab_network:
     section(

@@ -1,3 +1,10 @@
+"""
+Extrait les données Back-on-Track sur les trains de nuit européens.
+
+Les fichiers JSON téléchargés sont conservés en brut dans data/raw/back_on_track afin
+que la transformation puisse ensuite créer les trajets night dans le modèle relationnel.
+"""
+
 from pathlib import Path
 from datetime import datetime
 import json
@@ -22,7 +29,9 @@ OUTPUT_DIR = Path("data/raw/back_on_track")
 
 def download_json_file(file_name: str) -> dict | list:
     """
-    Télécharge un fichier JSON depuis le dépôt Back-on-Track.
+    Télécharge un fichier JSON précis depuis le dépôt Back-on-Track.
+
+    La fonction retourne directement le contenu JSON pour qu'il puisse être sauvegardé sans modification.
     """
     url = f"{BASE_URL}/{file_name}"
 
@@ -34,7 +43,9 @@ def download_json_file(file_name: str) -> dict | list:
 
 def save_raw_json(data: dict | list, file_name: str) -> None:
     """
-    Sauvegarde le JSON brut dans data/raw/back_on_track.
+    Sauvegarde un fichier JSON brut dans le dossier Back-on-Track.
+
+    Les données sont conservées telles qu'elles viennent de la source pour garder la traçabilité.
     """
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -48,7 +59,10 @@ def save_raw_json(data: dict | list, file_name: str) -> None:
 
 def save_metadata(extracted_files: list[str]) -> None:
     """
-    Sauvegarde un fichier de métadonnées pour tracer l'extraction.
+    Écrit un fichier metadata.json décrivant l'extraction.
+
+    Les métadonnées permettent de savoir quelle source a été utilisée, quand elle a été
+    extraite et quels fichiers bruts ont été produits.
     """
     metadata = {
         "source_name": "Back-on-Track Night Train Data",
@@ -69,7 +83,9 @@ def save_metadata(extracted_files: list[str]) -> None:
 
 def extract_back_on_track() -> None:
     """
-    Fonction principale d'extraction.
+    Lance le téléchargement de tous les fichiers Back-on-Track nécessaires au projet.
+
+    Chaque fichier est traité séparément afin que l'extraction continue même si une ressource échoue.
     """
     print("Début de l'extraction Back-on-Track...")
 

@@ -11,13 +11,14 @@ import streamlit as st
 from dotenv import load_dotenv
 
 
-# ============================================================
-# Configuration PostgreSQL
-# ============================================================
-
+# Prépare les chemins du projet et charge le fichier .env.
+# Le dashboard peut ainsi se connecter à PostgreSQL sans exposer les identifiants dans le code.
 ROOT_DIR = Path(__file__).resolve().parents[1]
 load_dotenv(ROOT_DIR / ".env")
 
+
+# Paramètres de connexion PostgreSQL.
+# Les valeurs par défaut correspondent à la configuration Docker utilisée pendant le projet.
 DB_CONFIG = {
     "host": os.getenv("DB_HOST", "localhost"),
     "port": int(os.getenv("DB_PORT", 5432)),
@@ -28,11 +29,22 @@ DB_CONFIG = {
 
 
 def get_connection():
+    """
+    Ouvre une connexion PostgreSQL pour le dashboard.
+
+    Cette fonction est utilisée par toutes les requêtes SQL de visualisation.
+    """
     return psycopg2.connect(**DB_CONFIG)
 
 
 @st.cache_data(ttl=300, show_spinner=False)
 def run_query(query: str, params: tuple = ()) -> pd.DataFrame:
+    """
+    Exécute une requête SQL et retourne le résultat dans un DataFrame pandas.
+
+    Le cache Streamlit évite de relancer exactement la même requête à chaque
+    interaction utilisateur. Cela rend le dashboard plus rapide et plus fluide.
+    """
     connection = get_connection()
     try:
         return pd.read_sql(query, connection, params=params)
@@ -40,32 +52,44 @@ def run_query(query: str, params: tuple = ()) -> pd.DataFrame:
         connection.close()
 
 
-# ============================================================
-# Formatage
-# ============================================================
-
 def format_int(value) -> str:
+    """
+    Formate un entier avec des espaces pour améliorer la lisibilité.
+
+    Exemple : 50983 devient 50 983.
+    """
     if pd.isna(value):
         return "0"
     return f"{int(value):,}".replace(",", " ")
 
 
 def format_float(value, digits: int = 2) -> str:
+    """
+    Formate un nombre décimal avec un nombre fixe de chiffres après la virgule.
+    """
     if pd.isna(value):
         return "0.00"
     return f"{float(value):.{digits}f}"
 
 
 def test_database_connection() -> bool:
+    """
+    Vérifie que la base PostgreSQL répond correctement.
+
+    Le dashboard utilise cette fonction au démarrage pour éviter d'afficher des
+    graphiques vides si la base n'est pas lancée.
+    """
     df = run_query("SELECT 1 AS status;")
     return not df.empty
 
 
-# ============================================================
-# Chargement des données
-# ============================================================
-
 def load_global_kpis() -> pd.DataFrame:
+    """
+    Charge les indicateurs principaux affichés en haut du dashboard.
+
+    Cette requête récupère les volumes globaux : trajets, gares, routes, arrêts,
+    anomalies qualité, score moyen et complétude des coordonnées GPS.
+    """
     query = """
         SELECT
             (SELECT COUNT(*) FROM trip) AS total_trips,
@@ -101,6 +125,9 @@ def load_global_kpis() -> pd.DataFrame:
 
 
 def load_train_type_options() -> pd.DataFrame:
+    """
+    Charge la liste des types de train disponibles pour le filtre latéral.
+    """
     return run_query("""
         SELECT type_name
         FROM train_type
@@ -109,6 +136,9 @@ def load_train_type_options() -> pd.DataFrame:
 
 
 def load_source_options() -> pd.DataFrame:
+    """
+    Charge la liste des sources de données disponibles pour le filtre latéral.
+    """
     return run_query("""
         SELECT data_source_id, source_name
         FROM data_source
@@ -117,6 +147,12 @@ def load_source_options() -> pd.DataFrame:
 
 
 def load_source_stats() -> pd.DataFrame:
+    """
+    Calcule le nombre de trajets par source de données.
+
+    Ce résultat alimente le graphique qui compare le poids des différentes sources
+    dans l'entrepôt PostgreSQL.
+    """
     query = """
         SELECT
             ds.source_name,
@@ -136,6 +172,11 @@ def load_source_stats() -> pd.DataFrame:
 
 
 def load_train_type_stats() -> pd.DataFrame:
+    """
+    Calcule le nombre de trajets pour chaque type de train.
+
+    Cette fonction permet de comparer les volumes de trains de jour et de nuit.
+    """
     query = """
         SELECT
             tt.type_name,
@@ -154,6 +195,11 @@ def load_train_type_stats() -> pd.DataFrame:
 
 
 def load_stations_by_country() -> pd.DataFrame:
+    """
+    Calcule le nombre de gares par pays.
+
+    Ce résultat permet d'analyser la couverture géographique des données chargées.
+    """
     return run_query("""
         SELECT
             c.country_name,
@@ -170,6 +216,12 @@ def load_stations_by_country() -> pd.DataFrame:
 
 
 def load_top_operators(limit: int = 15) -> pd.DataFrame:
+    """
+    Charge les opérateurs ferroviaires les plus représentés en nombre de trajets.
+
+    Les opérateurs sont gardés avec leurs libellés d'origine afin de conserver la
+    traçabilité des sources.
+    """
     return run_query("""
         SELECT
             o.operator_name,
@@ -187,6 +239,12 @@ def load_top_operators(limit: int = 15) -> pd.DataFrame:
 
 
 def load_source_train_type_counts() -> pd.DataFrame:
+    """
+    Calcule le croisement entre source de données et type de train.
+
+    Ce résultat est utilisé par le Sunburst pour montrer quelle source alimente
+    quelle catégorie de train.
+    """
     return run_query("""
         SELECT
             ds.source_name,
@@ -203,6 +261,12 @@ def load_source_train_type_counts() -> pd.DataFrame:
 
 
 def load_quality_stats() -> pd.DataFrame:
+    """
+    Charge les statistiques qualité globales.
+
+    Cette fonction est conservée pour une éventuelle réactivation d'une page
+    qualité dans une version future du dashboard.
+    """
     return run_query("""
         SELECT
             COUNT(*) AS total_checks,
@@ -217,6 +281,12 @@ def load_quality_stats() -> pd.DataFrame:
 
 
 def load_quality_by_source() -> pd.DataFrame:
+    """
+    Calcule les indicateurs qualité par source de données.
+
+    La fonction reste disponible si l'on souhaite remettre une analyse qualité
+    détaillée dans le dashboard.
+    """
     return run_query("""
         SELECT
             ds.source_name,
@@ -236,6 +306,9 @@ def load_quality_by_source() -> pd.DataFrame:
 
 
 def load_quality_by_source_and_type() -> pd.DataFrame:
+    """
+    Calcule le score qualité moyen par source et par type de train.
+    """
     return run_query("""
         SELECT
             ds.source_name,
@@ -254,6 +327,12 @@ def load_quality_by_source_and_type() -> pd.DataFrame:
 
 
 def load_anomalies(selected_train_type: str = "Tous", selected_source_id: Optional[int] = None, limit: int = 100) -> pd.DataFrame:
+    """
+    Charge les trajets qui présentent une anomalie qualité.
+
+    Les filtres permettent de limiter les anomalies à un type de train ou à une
+    source précise.
+    """
     conditions = [
         """
         (
@@ -305,6 +384,12 @@ def load_anomalies(selected_train_type: str = "Tous", selected_source_id: Option
 
 
 def load_trips(selected_train_type: str = "Tous", selected_source_id: Optional[int] = None, departure_city: str = "", arrival_city: str = "", limit: int = 100) -> pd.DataFrame:
+    """
+    Charge les trajets affichés dans le tableau d'exploration.
+
+    Les filtres de la barre latérale et les champs ville de départ / ville
+    d'arrivée sont appliqués ici.
+    """
     conditions = []
     params = []
 
@@ -373,6 +458,12 @@ def load_trips(selected_train_type: str = "Tous", selected_source_id: Optional[i
 
 
 def load_route_network(limit: int = 25) -> pd.DataFrame:
+    """
+    Charge les connexions les plus fréquentes entre villes.
+
+    Chaque ligne représente une relation départ-arrivée et le nombre de trajets
+    associés. Le résultat sert à construire le graphe de réseau.
+    """
     return run_query("""
         SELECT
             dep_city.city_name AS source_city,
@@ -395,11 +486,13 @@ def load_route_network(limit: int = 25) -> pd.DataFrame:
     """, (limit,))
 
 
-# ============================================================
-# Préparation + layout
-# ============================================================
-
 def prepare_numeric_column(df: pd.DataFrame, column: str) -> pd.DataFrame:
+    """
+    Convertit une colonne en valeur numérique.
+
+    Cette étape évite les erreurs Plotly lorsque les volumes arrivent sous forme
+    de texte depuis PostgreSQL.
+    """
     df = df.copy()
     if column in df.columns:
         df[column] = pd.to_numeric(df[column], errors="coerce").fillna(0)
@@ -407,6 +500,11 @@ def prepare_numeric_column(df: pd.DataFrame, column: str) -> pd.DataFrame:
 
 
 def apply_pro_layout(fig, height: int = 620):
+    """
+    Applique une mise en forme commune à tous les graphiques Plotly.
+
+    L'objectif est d'avoir une identité visuelle cohérente sur tout le dashboard.
+    """
     fig.update_layout(
         template="plotly_white",
         height=height,
@@ -420,17 +518,13 @@ def apply_pro_layout(fig, height: int = 620):
     return fig
 
 
-# ============================================================
-# Visualisations Plotly
-# ============================================================
+def create_horizontal_bar_chart(df: pd.DataFrame, x_col: str, y_col: str, title: str, height: int = 620):
+    """
+    Crée un histogramme horizontal à partir d'un DataFrame.
 
-def create_horizontal_bar_chart(
-    df: pd.DataFrame,
-    x_col: str,
-    y_col: str,
-    title: str,
-    height: int = 620
-):
+    Cette fonction est utilisée pour comparer des volumes : sources, types de
+    train, pays ou opérateurs.
+    """
     df = df.copy()
 
     if df.empty:
@@ -508,8 +602,10 @@ def create_horizontal_bar_chart(
 
 def create_log_source_bar_chart(df: pd.DataFrame, height: int = 560):
     """
-    Histogramme horizontal avec échelle logarithmique.
-    Utile quand une source a un volume beaucoup plus élevé qu'une autre.
+    Crée un histogramme horizontal avec une échelle logarithmique.
+
+    Cette fonction n'est pas utilisée dans la version actuelle du dashboard, mais
+    elle reste disponible si l'on veut mieux visualiser des volumes très déséquilibrés.
     """
     df = prepare_numeric_column(df, "total_trips")
     df = df.sort_values("total_trips", ascending=True)
@@ -535,7 +631,9 @@ def create_log_source_bar_chart(df: pd.DataFrame, height: int = 560):
 
 def create_train_type_share_chart(df: pd.DataFrame, height: int = 560):
     """
-    Graphique séparé jour / nuit avec volume et pourcentage.
+    Crée un graphique enrichi pour comparer les trains de jour et de nuit.
+
+    Le graphique affiche à la fois le nombre de trajets et le pourcentage associé.
     """
     df = prepare_numeric_column(df, "total_trips")
     df = prepare_numeric_column(df, "percentage")
@@ -562,7 +660,14 @@ def create_train_type_share_chart(df: pd.DataFrame, height: int = 560):
     fig.update_yaxes(showgrid=False)
     return apply_pro_layout(fig, height=height)
 
+
 def create_sunburst_chart(df: pd.DataFrame, height: int = 680):
+    """
+    Crée un diagramme Sunburst source -> type de train.
+
+    Le centre représente les sources de données et l'anneau extérieur représente
+    les types de train associés à chaque source.
+    """
     df = prepare_numeric_column(df, "total_trips")
 
     source_colors = {
@@ -599,10 +704,12 @@ def create_sunburst_chart(df: pd.DataFrame, height: int = 680):
     return apply_pro_layout(fig, height=height)
 
 
-
-
-
 def create_quality_heatmap(df: pd.DataFrame, height: int = 560):
+    """
+    Crée une heatmap du score qualité moyen par source et type de train.
+
+    Cette visualisation est conservée pour une future page qualité.
+    """
     pivot_df = df.pivot(index="source_name", columns="type_name", values="avg_quality_score").fillna(0)
     fig = px.imshow(
         pivot_df,
@@ -615,6 +722,12 @@ def create_quality_heatmap(df: pd.DataFrame, height: int = 560):
 
 
 def create_radar_chart(df: pd.DataFrame, height: int = 680):
+    """
+    Crée un diagramme radar pour comparer les indicateurs qualité par source.
+
+    Chaque axe du radar représente un aspect de la qualité : score moyen,
+    valeurs manquantes, erreurs horaires et doublons.
+    """
     fig = go.Figure()
 
     for _, row in df.iterrows():
@@ -640,6 +753,13 @@ def create_radar_chart(df: pd.DataFrame, height: int = 680):
 
 
 def create_network_graph(df: pd.DataFrame, height: int = 760):
+    """
+    Crée un graphe de réseau entre villes.
+
+    Chaque ville est représentée par un nœud. Chaque lien représente une relation
+    ferroviaire entre deux villes. La taille des nœuds augmente avec le nombre de
+    connexions afin de faire ressortir les villes les plus centrales.
+    """
     df = prepare_numeric_column(df, "total_trips")
     G = nx.Graph()
 

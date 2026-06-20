@@ -1,13 +1,17 @@
 /* ============================================================
-   ObRail Europe - Requêtes SQL d'analyse
+   ObRail Europe - Requêtes SQL de contrôle et d'analyse
    Fichier : sql/test_queries.sql
-   Objectif : vérifier et analyser les données chargées
+
+   Ce fichier regroupe des requêtes utiles pour vérifier le chargement,
+   comprendre les volumes de données, analyser les trajets et contrôler
+   la qualité des informations présentes dans PostgreSQL.
    ============================================================ */
 
+/* ------------------------------------------------------------
+   1. Contrôle du nombre de lignes par table
 
-/* ============================================================
-   1. Vérification du volume de données par table
-   ============================================================ */
+   Cette requête vérifie rapidement que toutes les tables principales ont été alimentées après le chargement PostgreSQL.
+   ------------------------------------------------------------ */
 
 SELECT 'country' AS table_name, COUNT(*) AS total_rows FROM country
 UNION ALL
@@ -31,9 +35,11 @@ SELECT 'quality_check', COUNT(*) FROM quality_check
 ORDER BY table_name;
 
 
-/* ============================================================
-   2. Répartition des trajets par type de train : jour / nuit
-   ============================================================ */
+/* ------------------------------------------------------------
+   2. Volume de trajets par type de train
+
+   Cette analyse compare le nombre de trajets de jour et de nuit présents dans la table trip.
+   ------------------------------------------------------------ */
 
 SELECT
     tt.type_name,
@@ -45,9 +51,11 @@ GROUP BY tt.type_name
 ORDER BY total_trips DESC;
 
 
-/* ============================================================
-   3. Répartition des trajets par source de données
-   ============================================================ */
+/* ------------------------------------------------------------
+   3. Volume de trajets par source
+
+   Cette requête montre quelles sources contribuent le plus au volume total des trajets.
+   ------------------------------------------------------------ */
 
 SELECT
     ds.source_name,
@@ -60,9 +68,11 @@ GROUP BY ds.source_name, ds.source_format
 ORDER BY total_trips DESC;
 
 
-/* ============================================================
-   4. Répartition croisée source / type de train
-   ============================================================ */
+/* ------------------------------------------------------------
+   4. Croisement entre source et type de train
+
+   Cette analyse permet de voir quelle source alimente quel type de train : day ou night.
+   ------------------------------------------------------------ */
 
 SELECT
     ds.source_name,
@@ -77,9 +87,11 @@ GROUP BY ds.source_name, tt.type_name
 ORDER BY ds.source_name, tt.type_name;
 
 
-/* ============================================================
+/* ------------------------------------------------------------
    5. Nombre de gares par pays
-   ============================================================ */
+
+   Cette requête mesure la couverture géographique des gares dans l'entrepôt.
+   ------------------------------------------------------------ */
 
 SELECT
     c.country_name,
@@ -94,9 +106,11 @@ GROUP BY c.country_name, c.country_code
 ORDER BY total_stations DESC;
 
 
-/* ============================================================
+/* ------------------------------------------------------------
    6. Nombre de villes par pays
-   ============================================================ */
+
+   Cette analyse complète la précédente en comptant les villes rattachées à chaque pays.
+   ------------------------------------------------------------ */
 
 SELECT
     c.country_name,
@@ -109,9 +123,11 @@ GROUP BY c.country_name, c.country_code
 ORDER BY total_cities DESC;
 
 
-/* ============================================================
+/* ------------------------------------------------------------
    7. Nombre de routes par opérateur
-   ============================================================ */
+
+   Cette requête indique combien de relations départ-arrivée sont associées à chaque opérateur.
+   ------------------------------------------------------------ */
 
 SELECT
     o.operator_name,
@@ -124,9 +140,11 @@ GROUP BY o.operator_name, o.operator_code
 ORDER BY total_routes DESC;
 
 
-/* ============================================================
+/* ------------------------------------------------------------
    8. Nombre de trajets par opérateur
-   ============================================================ */
+
+   Cette analyse classe les opérateurs selon le volume de trajets réellement chargés.
+   ------------------------------------------------------------ */
 
 SELECT
     o.operator_name,
@@ -141,9 +159,11 @@ GROUP BY o.operator_name, o.operator_code
 ORDER BY total_trips DESC;
 
 
-/* ============================================================
-   9. Durée moyenne des trajets par type de train
-   ============================================================ */
+/* ------------------------------------------------------------
+   9. Durée des trajets par type de train
+
+   Cette requête calcule la durée moyenne, minimale et maximale pour les trains de jour et de nuit.
+   ------------------------------------------------------------ */
 
 SELECT
     tt.type_name,
@@ -159,9 +179,11 @@ GROUP BY tt.type_name
 ORDER BY avg_duration_minutes DESC;
 
 
-/* ============================================================
-   10. Top 20 des trajets les plus longs
-   ============================================================ */
+/* ------------------------------------------------------------
+   10. Trajets les plus longs
+
+   Cette requête affiche les 20 trajets dont la durée calculée est la plus élevée.
+   ------------------------------------------------------------ */
 
 SELECT
     t.trip_id,
@@ -189,9 +211,11 @@ ORDER BY t.duration_minutes DESC
 LIMIT 20;
 
 
-/* ============================================================
+/* ------------------------------------------------------------
    11. Exemples de trajets de nuit
-   ============================================================ */
+
+   Cette requête affiche quelques trajets night pour vérifier que les sources de trains de nuit sont bien intégrées.
+   ------------------------------------------------------------ */
 
 SELECT
     t.trip_id,
@@ -219,9 +243,11 @@ ORDER BY t.trip_id
 LIMIT 20;
 
 
-/* ============================================================
+/* ------------------------------------------------------------
    12. Exemples de trajets de jour
-   ============================================================ */
+
+   Cette requête affiche quelques trajets day pour contrôler les données issues de la source SNCF GTFS.
+   ------------------------------------------------------------ */
 
 SELECT
     t.trip_id,
@@ -249,11 +275,11 @@ ORDER BY t.trip_id
 LIMIT 20;
 
 
-/* ============================================================
+/* ------------------------------------------------------------
    13. Routes transfrontalières
-   Une route est transfrontalière si le pays de départ
-   est différent du pays d'arrivée.
-   ============================================================ */
+
+   Une route est considérée comme transfrontalière lorsque le pays de départ est différent du pays d'arrivée.
+   ------------------------------------------------------------ */
 
 SELECT
     dep_country.country_name AS departure_country,
@@ -277,9 +303,11 @@ GROUP BY dep_country.country_name, arr_country.country_name
 ORDER BY total_routes DESC;
 
 
-/* ============================================================
-   14. Nombre de trajets transfrontaliers par type de train
-   ============================================================ */
+/* ------------------------------------------------------------
+   14. Trajets transfrontaliers par type de train
+
+   Cette analyse compte les trajets transfrontaliers séparément pour les trains de jour et de nuit.
+   ------------------------------------------------------------ */
 
 SELECT
     tt.type_name,
@@ -306,9 +334,11 @@ GROUP BY tt.type_name
 ORDER BY total_cross_border_trips DESC;
 
 
-/* ============================================================
-   15. Analyse globale de la qualité des données
-   ============================================================ */
+/* ------------------------------------------------------------
+   15. Synthèse globale de la qualité
+
+   Cette requête donne une vue d'ensemble des contrôles qualité : anomalies, score moyen, score minimum et maximum.
+   ------------------------------------------------------------ */
 
 SELECT
     COUNT(*) AS total_checks,
@@ -321,9 +351,11 @@ SELECT
 FROM quality_check;
 
 
-/* ============================================================
-   16. Détail des trajets avec anomalie qualité
-   ============================================================ */
+/* ------------------------------------------------------------
+   16. Détail des trajets avec anomalie
+
+   Cette requête liste les trajets qui présentent au moins une anomalie qualité détectée par l'ETL.
+   ------------------------------------------------------------ */
 
 SELECT
     q.quality_check_id,
@@ -351,9 +383,11 @@ ORDER BY q.quality_score ASC, t.trip_id
 LIMIT 100;
 
 
-/* ============================================================
-   17. Les 4 trajets de nuit incomplets identifiés
-   ============================================================ */
+/* ------------------------------------------------------------
+   17. Trajets de nuit incomplets connus
+
+   Cette requête vérifie spécifiquement les quelques trajets de nuit identifiés avec des horaires manquants ou invalides.
+   ------------------------------------------------------------ */
 
 SELECT
     t.trip_id,
@@ -375,9 +409,11 @@ WHERE t.trip_code IN ('ES 454', 'ES 455', 'MÁV IC 1204', 'MÁV IC 1205')
 ORDER BY t.trip_code;
 
 
-/* ============================================================
-   18. Complétude des coordonnées des gares
-   ============================================================ */
+/* ------------------------------------------------------------
+   18. Complétude globale des coordonnées GPS
+
+   Cette analyse mesure la part des gares qui possèdent une latitude et une longitude.
+   ------------------------------------------------------------ */
 
 SELECT
     COUNT(*) AS total_stations,
@@ -391,9 +427,11 @@ SELECT
 FROM station;
 
 
-/* ============================================================
-   19. Complétude des coordonnées par pays
-   ============================================================ */
+/* ------------------------------------------------------------
+   19. Complétude des coordonnées GPS par pays
+
+   Cette requête permet d'identifier les pays où les informations de géolocalisation sont les moins complètes.
+   ------------------------------------------------------------ */
 
 SELECT
     c.country_name,
@@ -414,9 +452,11 @@ GROUP BY c.country_name, c.country_code
 ORDER BY coordinate_completion_rate_percent ASC;
 
 
-/* ============================================================
-   20. Vérification des doublons de trip_code
-   ============================================================ */
+/* ------------------------------------------------------------
+   20. Recherche de doublons sur trip_code
+
+   Cette requête vérifie si un même code trajet apparaît plusieurs fois dans la table trip.
+   ------------------------------------------------------------ */
 
 SELECT
     trip_code,
@@ -427,9 +467,11 @@ HAVING COUNT(*) > 1
 ORDER BY duplicate_count DESC;
 
 
-/* ============================================================
-   21. Nombre d'arrêts moyen par trajet
-   ============================================================ */
+/* ------------------------------------------------------------
+   21. Nombre moyen d'arrêts par trajet
+
+   Cette analyse calcule le nombre moyen, minimum et maximum d'arrêts pour chaque type de train.
+   ------------------------------------------------------------ */
 
 SELECT
     tt.type_name,
@@ -452,9 +494,11 @@ GROUP BY tt.type_name
 ORDER BY avg_stops_per_trip DESC;
 
 
-/* ============================================================
-   22. Top 20 des trajets avec le plus d'arrêts
-   ============================================================ */
+/* ------------------------------------------------------------
+   22. Trajets avec le plus d'arrêts
+
+   Cette requête affiche les 20 trajets qui possèdent le plus grand nombre d'arrêts.
+   ------------------------------------------------------------ */
 
 SELECT
     t.trip_id,
@@ -484,9 +528,11 @@ ORDER BY total_stops DESC
 LIMIT 20;
 
 
-/* ============================================================
-   23. Top villes de départ
-   ============================================================ */
+/* ------------------------------------------------------------
+   23. Villes avec le plus de départs
+
+   Cette analyse identifie les villes qui apparaissent le plus souvent comme point de départ.
+   ------------------------------------------------------------ */
 
 SELECT
     dep_city.city_name AS departure_city,
@@ -506,9 +552,11 @@ ORDER BY total_departures DESC
 LIMIT 20;
 
 
-/* ============================================================
-   24. Top villes d'arrivée
-   ============================================================ */
+/* ------------------------------------------------------------
+   24. Villes avec le plus d'arrivées
+
+   Cette analyse identifie les villes qui apparaissent le plus souvent comme point d'arrivée.
+   ------------------------------------------------------------ */
 
 SELECT
     arr_city.city_name AS arrival_city,
@@ -528,11 +576,11 @@ ORDER BY total_arrivals DESC
 LIMIT 20;
 
 
-/* ============================================================
-   25. Exemple de recherche API future :
-   rechercher des trajets entre deux villes
-   Ici : départ contenant 'paris' et arrivée contenant 'lyon'
-   ============================================================ */
+/* ------------------------------------------------------------
+   25. Exemple de recherche de trajet entre deux villes
+
+   Cette requête simule un besoin API : rechercher des trajets dont le départ contient Paris et l'arrivée contient Lyon.
+   ------------------------------------------------------------ */
 
 SELECT
     t.trip_id,
@@ -565,10 +613,11 @@ ORDER BY t.service_date, t.departure_time
 LIMIT 50;
 
 
-/* ============================================================
-   26. Vue utile pour l'API : trajets enrichis
-   Cette vue facilite les futurs endpoints FastAPI.
-   ============================================================ */
+/* ------------------------------------------------------------
+   26. Création de la vue vw_trip_details
+
+   Cette vue prépare une table enrichie et plus simple à interroger pour l'API REST ou le dashboard.
+   ------------------------------------------------------------ */
 
 CREATE OR REPLACE VIEW vw_trip_details AS
 SELECT
@@ -615,9 +664,11 @@ LEFT JOIN quality_check q
     ON t.trip_id = q.trip_id;
 
 
-/* ============================================================
+/* ------------------------------------------------------------
    27. Test de la vue vw_trip_details
-   ============================================================ */
+
+   Cette requête affiche les premières lignes de la vue enrichie pour vérifier qu'elle fonctionne correctement.
+   ------------------------------------------------------------ */
 
 SELECT *
 FROM vw_trip_details
@@ -625,9 +676,11 @@ ORDER BY trip_id
 LIMIT 50;
 
 
-/* ============================================================
-   28. Vue utile pour le dashboard qualité
-   ============================================================ */
+/* ------------------------------------------------------------
+   28. Création de la vue vw_quality_dashboard
+
+   Cette vue agrège les indicateurs qualité par source et par type de train pour faciliter les analyses futures.
+   ------------------------------------------------------------ */
 
 CREATE OR REPLACE VIEW vw_quality_dashboard AS
 SELECT
@@ -648,9 +701,11 @@ JOIN quality_check q
 GROUP BY tt.type_name, ds.source_name;
 
 
-/* ============================================================
+/* ------------------------------------------------------------
    29. Test de la vue qualité
-   ============================================================ */
+
+   Cette requête affiche le contenu de la vue qualité afin de vérifier le résultat de l'agrégation.
+   ------------------------------------------------------------ */
 
 SELECT *
 FROM vw_quality_dashboard

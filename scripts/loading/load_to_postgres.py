@@ -1,3 +1,10 @@
+"""
+Charge les fichiers transformés dans PostgreSQL.
+
+Le script recrée les tables à partir du fichier SQL, importe les CSV dans le bon ordre
+pour respecter les clés étrangères, puis vérifie le nombre de lignes chargées.
+"""
+
 from pathlib import Path
 import psycopg2
 
@@ -29,10 +36,20 @@ LOAD_ORDER = [
 
 
 def get_connection():
+    """
+    Ouvre une connexion PostgreSQL avec la configuration du projet.
+
+    La même fonction est utilisée pour toutes les opérations de création de tables, chargement et vérification.
+    """
     return psycopg2.connect(**DB_CONFIG)
 
 
 def execute_sql_file(connection, sql_file: Path):
+    """
+    Exécute le fichier SQL qui crée les tables de la base.
+
+    Cette étape repart d'un schéma propre avant d'importer les CSV transformés.
+    """
     if not sql_file.exists():
         raise FileNotFoundError(f"Fichier SQL introuvable : {sql_file}")
 
@@ -50,6 +67,11 @@ def execute_sql_file(connection, sql_file: Path):
 
 
 def load_csv_to_table(connection, table_name: str, csv_file: str):
+    """
+    Charge un fichier CSV dans une table PostgreSQL avec la commande COPY.
+
+    COPY est utilisé car il est plus rapide et plus adapté au chargement de gros fichiers qu'une insertion ligne par ligne.
+    """
     csv_path = PROCESSED_DIR / csv_file
 
     if not csv_path.exists():
@@ -78,6 +100,11 @@ def load_csv_to_table(connection, table_name: str, csv_file: str):
 
 
 def count_rows(connection, table_name: str):
+    """
+    Compte le nombre de lignes présentes dans une table.
+
+    Cette fonction sert à vérifier que le chargement a bien alimenté chaque table.
+    """
     with connection.cursor() as cursor:
         cursor.execute(f"SELECT COUNT(*) FROM {table_name};")
         count = cursor.fetchone()[0]
@@ -86,6 +113,11 @@ def count_rows(connection, table_name: str):
 
 
 def verify_loading(connection):
+    """
+    Affiche le nombre de lignes chargées pour chaque table.
+
+    Cela donne un contrôle rapide en fin de chargement et facilite la détection d'une table vide.
+    """
     print("\nVérification du chargement")
     print("-" * 80)
 
@@ -95,6 +127,11 @@ def verify_loading(connection):
 
 
 def main():
+    """
+    Point d'entrée du script.
+
+    Cette fonction organise les étapes dans le bon ordre et affiche des messages de suivi dans le terminal.
+    """
     print("Début du chargement PostgreSQL")
 
     connection = get_connection()

@@ -1,3 +1,10 @@
+"""
+Extrait le référentiel SNCF des gares de voyageurs.
+
+Le script télécharge un fichier CSV brut, vérifie qu'il est lisible, puis sauvegarde
+un fichier de métadonnées pour garder une trace de la source utilisée pendant l'ETL.
+"""
+
 from pathlib import Path
 from datetime import datetime
 import json
@@ -9,7 +16,7 @@ SOURCE_NAME = "Gares de voyageurs du réseau ferré national"
 SOURCE_FORMAT = "CSV"
 SOURCE_DESCRIPTION = "Référentiel des gares de voyageurs SNCF avec identifiants, noms, trigrammes et coordonnées géographiques."
 
-# URL principale du CSV
+
 CSV_URLS = [
     "https://ressources.data.sncf.com/api/explore/v2.1/catalog/datasets/gares-de-voyageurs/exports/csv?use_labels=true",
     "https://ressources.data.sncf.com/api/explore/v2.1/catalog/datasets/gares-de-voyageurs/exports/csv?lang=fr&timezone=Europe%2FParis&use_labels=true&delimiter=%3B",
@@ -23,8 +30,10 @@ METADATA_PATH = OUTPUT_DIR / "metadata.json"
 
 def download_csv() -> str:
     """
-    Télécharge le fichier CSV des gares de voyageurs.
-    Le script essaie plusieurs URL pour être plus robuste.
+    Télécharge le CSV des gares de voyageurs.
+
+    Plusieurs URL sont essayées car les portails Open Data peuvent changer de lien ou
+    rediriger vers une autre ressource. La première URL valide est conservée dans les métadonnées.
     """
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -60,7 +69,10 @@ def download_csv() -> str:
 
 def check_csv_file() -> None:
     """
-    Vérifie que le CSV est lisible et affiche un aperçu.
+    Vérifie rapidement que le fichier téléchargé peut être lu par pandas.
+
+    Cette vérification ne transforme pas les données ; elle sert uniquement à détecter un
+    téléchargement invalide ou un problème de séparateur CSV.
     """
     print("\nVérification du fichier CSV...")
 
@@ -77,7 +89,10 @@ def check_csv_file() -> None:
 
 def save_metadata(source_url_used: str) -> None:
     """
-    Sauvegarde les métadonnées de l'extraction.
+    Écrit un fichier metadata.json décrivant l'extraction.
+
+    Les métadonnées permettent de savoir quelle source a été utilisée, quand elle a été
+    extraite et quels fichiers bruts ont été produits.
     """
     metadata = {
         "source_name": SOURCE_NAME,
@@ -100,7 +115,9 @@ def save_metadata(source_url_used: str) -> None:
 
 def extract_gares_voyageurs() -> None:
     """
-    Fonction principale d'extraction de la source 3.
+    Lance l'extraction complète de la source des gares de voyageurs.
+
+    La fonction enchaîne le téléchargement, la vérification du CSV et la sauvegarde des métadonnées.
     """
     print("Début extraction source 3 : Gares de voyageurs")
 

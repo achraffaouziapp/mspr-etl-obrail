@@ -1,3 +1,10 @@
+"""
+Vérifie les fichiers CSV produits par la transformation.
+
+Ce script contrôle la présence des fichiers, les clés primaires, les relations entre
+tables et quelques règles métier avant le chargement dans PostgreSQL.
+"""
+
 from pathlib import Path
 import pandas as pd
 
@@ -19,6 +26,11 @@ FILES = [
 
 
 def check_file_exists(file_name: str) -> bool:
+    """
+    Vérifie qu'un fichier CSV transformé existe bien dans data/processed.
+
+    Si un fichier est absent, le script le signale clairement avant les contrôles suivants.
+    """
     file_path = PROCESSED_DIR / file_name
 
     if not file_path.exists():
@@ -30,6 +42,11 @@ def check_file_exists(file_name: str) -> bool:
 
 
 def check_basic_info(file_name: str) -> pd.DataFrame | None:
+    """
+    Lit un CSV et affiche ses informations principales.
+
+    Le résumé comprend le nombre de lignes, les colonnes, un aperçu et les valeurs manquantes.
+    """
     file_path = PROCESSED_DIR / file_name
 
     try:
@@ -55,6 +72,11 @@ def check_basic_info(file_name: str) -> pd.DataFrame | None:
 
 
 def check_primary_key(df: pd.DataFrame, file_name: str, primary_key: str) -> None:
+    """
+    Contrôle la clé primaire d'un fichier transformé.
+
+    Une clé primaire doit être présente, non vide et non dupliquée pour garantir un chargement fiable.
+    """
     print(f"\nVérification clé primaire : {primary_key}")
 
     if primary_key not in df.columns:
@@ -83,6 +105,11 @@ def check_foreign_key(
     fk_column: str,
     pk_column: str
 ) -> None:
+    """
+    Vérifie qu'une clé étrangère pointe bien vers une clé primaire existante.
+
+    Ce contrôle permet de détecter les relations cassées avant le chargement PostgreSQL.
+    """
     print(f"\nVérification FK : {child_file}.{fk_column} -> {parent_file}.{pk_column}")
 
     if fk_column not in child_df.columns:
@@ -106,6 +133,11 @@ def check_foreign_key(
 
 
 def check_trip_type_distribution(trip_df: pd.DataFrame, train_type_df: pd.DataFrame) -> None:
+    """
+    Analyse la répartition des trajets par type de train.
+
+    Ce contrôle permet de vérifier que les trains de jour et de nuit sont bien présents après transformation.
+    """
     print("\nRépartition des types de train")
 
     if "train_type_id" not in trip_df.columns:
@@ -135,6 +167,11 @@ def check_trip_type_distribution(trip_df: pd.DataFrame, train_type_df: pd.DataFr
 
 
 def check_quality_scores(quality_df: pd.DataFrame) -> None:
+    """
+    Vérifie que les scores qualité restent dans l'intervalle attendu de 0 à 100.
+
+    Un score hors limites indiquerait une erreur dans les règles de calcul de qualité.
+    """
     print("\nVérification des scores qualité")
 
     if "quality_score" not in quality_df.columns:
@@ -154,6 +191,11 @@ def check_quality_scores(quality_df: pd.DataFrame) -> None:
 
 
 def main():
+    """
+    Point d'entrée du script.
+
+    Cette fonction organise les étapes dans le bon ordre et affiche des messages de suivi dans le terminal.
+    """
     print("Début de la vérification des fichiers transformés")
     print("=" * 80)
 

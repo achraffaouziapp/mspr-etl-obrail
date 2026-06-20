@@ -3,6 +3,8 @@ from fastapi import FastAPI, Query, HTTPException
 from api.database import execute_query
 
 
+# Création de l'application FastAPI.
+# Les informations ci-dessous apparaissent dans la documentation interactive /docs.
 app = FastAPI(
     title="ObRail Europe API",
     description="API REST permettant de consulter les données ferroviaires transformées et chargées dans PostgreSQL.",
@@ -12,6 +14,12 @@ app = FastAPI(
 
 @app.get("/")
 def root():
+    """
+    Point d'entrée simple de l'API.
+
+    Il permet de vérifier rapidement que le serveur FastAPI est bien lancé et
+    indique où trouver la documentation interactive.
+    """
     return {
         "message": "Bienvenue sur l'API ObRail Europe",
         "documentation": "/docs",
@@ -22,7 +30,10 @@ def root():
 @app.get("/health")
 def health_check():
     """
-    Vérifie que l'API arrive à communiquer avec PostgreSQL.
+    Vérifie l'état de l'API et de la connexion PostgreSQL.
+
+    Cet endpoint est utile pour les tests Postman ou pour vérifier rapidement que
+    le backend communique correctement avec la base de données.
     """
     result = execute_query("SELECT 1 AS database_status;", fetch_one=True)
 
@@ -35,7 +46,10 @@ def health_check():
 @app.get("/tables/counts")
 def get_table_counts():
     """
-    Retourne le nombre de lignes par table.
+    Retourne le nombre de lignes présentes dans chaque table principale.
+
+    Cette route sert à contrôler que le chargement ETL a bien alimenté toutes les
+    tables attendues : dimensions, trajets, arrêts et contrôles qualité.
     """
     query = """
         SELECT 'country' AS table_name, COUNT(*) AS total_rows FROM country
@@ -66,7 +80,10 @@ def get_table_counts():
 @app.get("/train-types")
 def get_train_types():
     """
-    Liste les types de train disponibles : day / night.
+    Liste les types de train disponibles dans la base.
+
+    Dans ce projet, les trajets sont principalement classés en deux catégories :
+    trains de jour et trains de nuit.
     """
     query = """
         SELECT
@@ -82,7 +99,10 @@ def get_train_types():
 @app.get("/sources")
 def get_data_sources():
     """
-    Liste les sources de données utilisées par l'ETL.
+    Liste les sources de données intégrées dans le processus ETL.
+
+    Cette route permet de voir d'où viennent les données : GTFS SNCF,
+    Back-on-Track, European Sleeper ou autres sources utilisées dans le projet.
     """
     query = """
         SELECT
@@ -102,7 +122,10 @@ def get_data_sources():
 @app.get("/countries")
 def get_countries():
     """
-    Liste les pays disponibles.
+    Liste les pays présents dans l'entrepôt de données.
+
+    Cette route est utile pour alimenter des filtres géographiques ou pour
+    explorer la couverture européenne des gares.
     """
     query = """
         SELECT
@@ -124,7 +147,11 @@ def get_stations(
     offset: int = Query(default=0, ge=0)
 ):
     """
-    Liste les gares avec filtres optionnels par pays et ville.
+    Retourne les gares avec des filtres optionnels.
+
+    On peut filtrer par pays, par ville, et limiter le nombre de résultats pour
+    éviter de retourner trop de lignes à la fois. Le paramètre offset permet de
+    parcourir les résultats page par page.
     """
     conditions = []
     params = []
@@ -170,7 +197,10 @@ def get_stations(
 @app.get("/operators")
 def get_operators():
     """
-    Liste les opérateurs ferroviaires.
+    Liste les opérateurs ferroviaires enregistrés dans la base.
+
+    Chaque opérateur est rattaché à un pays. Les libellés sont conservés tels
+    qu'ils proviennent des sources afin de garder la traçabilité des données.
     """
     query = """
         SELECT
@@ -198,7 +228,11 @@ def get_trips(
     offset: int = Query(default=0, ge=0)
 ):
     """
-    Liste les trajets avec filtres optionnels.
+    Retourne une liste de trajets ferroviaires avec filtres optionnels.
+
+    Cette route est l'une des plus importantes de l'API. Elle regroupe les
+    informations du trajet, des gares de départ et d'arrivée, de la source,
+    de l'opérateur et du contrôle qualité.
     """
     conditions = []
     params = []
@@ -278,7 +312,10 @@ def get_trips(
 @app.get("/trips/{trip_id}")
 def get_trip_by_id(trip_id: int):
     """
-    Détail d'un trajet par son identifiant.
+    Retourne le détail complet d'un trajet à partir de son identifiant.
+
+    Si aucun trajet ne correspond à l'identifiant demandé, l'API renvoie une
+    erreur 404 afin d'indiquer clairement que la ressource n'existe pas.
     """
     query = """
         SELECT
@@ -337,7 +374,10 @@ def get_trip_by_id(trip_id: int):
 @app.get("/trips/{trip_id}/stops")
 def get_trip_stops(trip_id: int):
     """
-    Liste les arrêts d'un trajet.
+    Retourne les arrêts associés à un trajet.
+
+    Les arrêts sont classés dans l'ordre du parcours grâce à stop_order. Cette
+    route permet donc de reconstituer l'itinéraire complet d'un train.
     """
     query = """
         SELECT
@@ -378,8 +418,11 @@ def get_quality_checks(
     offset: int = Query(default=0, ge=0)
 ):
     """
-    Liste les contrôles qualité.
-    Par défaut, retourne uniquement les anomalies.
+    Retourne les résultats des contrôles qualité.
+
+    Par défaut, l'API affiche uniquement les lignes qui contiennent une anomalie.
+    Il est possible de désactiver ce filtre avec only_errors=false pour consulter
+    l'ensemble des contrôles.
     """
     where_clause = ""
 
@@ -420,7 +463,10 @@ def get_quality_checks(
 @app.get("/stats/train-types")
 def get_stats_by_train_type():
     """
-    Statistiques : nombre de trajets par type de train.
+    Calcule le nombre de trajets par type de train.
+
+    Cette statistique est utilisée pour comparer le volume des trains de jour et
+    des trains de nuit dans l'entrepôt de données.
     """
     query = """
         SELECT
@@ -439,7 +485,10 @@ def get_stats_by_train_type():
 @app.get("/stats/sources")
 def get_stats_by_source():
     """
-    Statistiques : nombre de trajets par source.
+    Calcule le nombre de trajets par source de données.
+
+    Cette statistique permet de comprendre quelle source contribue le plus au
+    volume global des trajets.
     """
     query = """
         SELECT
@@ -459,7 +508,10 @@ def get_stats_by_source():
 @app.get("/stats/quality")
 def get_quality_stats():
     """
-    Statistiques globales de qualité.
+    Retourne les indicateurs globaux de qualité.
+
+    Cette route résume le nombre de contrôles effectués, les anomalies détectées
+    et le score qualité moyen calculé pendant la transformation.
     """
     query = """
         SELECT
@@ -479,7 +531,10 @@ def get_quality_stats():
 @app.get("/stats/stations-by-country")
 def get_stations_by_country():
     """
-    Statistiques : nombre de gares par pays.
+    Calcule le nombre de gares par pays.
+
+    Cette statistique permet d'évaluer la couverture géographique des données et
+    d'identifier les pays les plus représentés dans la base.
     """
     query = """
         SELECT

@@ -1,3 +1,10 @@
+"""
+Extrait les horaires théoriques SNCF au format GTFS.
+
+Le fichier source est un ZIP contenant plusieurs fichiers texte GTFS. Ce script le
+télécharge, le décompresse dans data/raw/sncf_gtfs et garde la liste des fichiers extraits.
+"""
+
 from pathlib import Path
 from datetime import datetime
 import json
@@ -17,7 +24,9 @@ ZIP_PATH = OUTPUT_DIR / "sncf_gtfs.zip"
 
 def download_gtfs_zip() -> None:
     """
-    Télécharge le fichier GTFS ZIP de la SNCF.
+    Télécharge le ZIP GTFS de la SNCF et le sauvegarde dans le dossier raw.
+
+    Le ZIP est conservé pour garder une copie brute de la source avant décompression.
     """
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -35,7 +44,10 @@ def download_gtfs_zip() -> None:
 
 def unzip_gtfs_file() -> list[str]:
     """
-    Décompresse le fichier GTFS ZIP dans data/raw/sncf_gtfs.
+    Décompresse le fichier GTFS dans le dossier data/raw/sncf_gtfs.
+
+    La fonction retourne la liste des fichiers extraits afin de pouvoir vérifier leur présence
+    et les inscrire dans les métadonnées.
     """
     extracted_files = []
 
@@ -53,7 +65,10 @@ def unzip_gtfs_file() -> list[str]:
 
 def save_metadata(extracted_files: list[str]) -> None:
     """
-    Sauvegarde les métadonnées de l'extraction.
+    Écrit un fichier metadata.json décrivant l'extraction.
+
+    Les métadonnées permettent de savoir quelle source a été utilisée, quand elle a été
+    extraite et quels fichiers bruts ont été produits.
     """
     metadata = {
         "source_name": SOURCE_NAME,
@@ -76,7 +91,10 @@ def save_metadata(extracted_files: list[str]) -> None:
 
 def check_expected_files(extracted_files: list[str]) -> None:
     """
-    Vérifie que les principaux fichiers GTFS sont présents.
+    Vérifie la présence des fichiers GTFS principaux.
+
+    Certains fichiers comme calendar.txt peuvent être absents selon l'export. Le script signale
+    l'absence sans bloquer automatiquement l'extraction.
     """
     expected_files = [
         "agency.txt",
@@ -99,7 +117,9 @@ def check_expected_files(extracted_files: list[str]) -> None:
 
 def extract_sncf_gtfs() -> None:
     """
-    Fonction principale d'extraction de la source SNCF GTFS.
+    Lance l'extraction complète de la source GTFS SNCF.
+
+    Elle télécharge le ZIP, le décompresse, vérifie les fichiers attendus et écrit les métadonnées.
     """
     print("Début extraction source 2 : SNCF GTFS")
 

@@ -1,3 +1,10 @@
+"""
+Extrait un tableau Wikipedia listant des gares européennes très fréquentées.
+
+Cette source complète les autres fichiers avec des informations géographiques issues
+d'un tableau HTML. Le script sauvegarde à la fois la page brute et le CSV extrait.
+"""
+
 from pathlib import Path
 from datetime import datetime
 import json
@@ -26,8 +33,10 @@ METADATA_PATH = OUTPUT_DIR / "metadata.json"
 
 def normalize_column_name(column_name: str) -> str:
     """
-    Nettoie un nom de colonne pour obtenir un format simple.
-    Exemple : Railway Station -> railway_station
+    Convertit un nom de colonne en format simple et stable.
+
+    Les espaces, accents faibles, ponctuations ou caractères spéciaux sont remplacés pour obtenir
+    des noms plus faciles à utiliser pendant la transformation.
     """
     column_name = str(column_name).strip().lower()
     column_name = re.sub(r"[^a-z0-9]+", "_", column_name)
@@ -37,7 +46,9 @@ def normalize_column_name(column_name: str) -> str:
 
 def flatten_columns(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Gère les colonnes multi-niveaux parfois présentes dans les tableaux Wikipedia.
+    Aplatit les colonnes multi-niveaux qui peuvent apparaître dans certains tableaux HTML.
+
+    Cette étape rend les colonnes compatibles avec un CSV classique.
     """
     df = df.copy()
 
@@ -62,7 +73,9 @@ def flatten_columns(df: pd.DataFrame) -> pd.DataFrame:
 
 def download_html() -> str:
     """
-    Télécharge la page HTML.
+    Télécharge la page Wikipedia et sauvegarde le HTML brut.
+
+    Garder le HTML permet de tracer exactement quelle page a été utilisée pour l'extraction.
     """
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -87,8 +100,10 @@ def download_html() -> str:
 
 def html_table_to_dataframe(table) -> pd.DataFrame:
     """
-    Convertit un tableau HTML en DataFrame sans utiliser pandas.read_html,
-    donc sans dépendre de lxml.
+    Convertit un tableau HTML en DataFrame pandas sans dépendre de lxml.
+
+    La fonction lit les lignes et cellules HTML avec BeautifulSoup, nettoie les références Wikipedia
+    et reconstruit un tableau exploitable en CSV.
     """
     headers = []
     rows = []
@@ -106,7 +121,7 @@ def html_table_to_dataframe(table) -> pd.DataFrame:
         for cell in cells:
             text = cell.get_text(" ", strip=True)
 
-            # Supprime les références Wikipedia du type [1], [2], etc.
+
             text = re.sub(r"\[\d+\]", "", text).strip()
 
             colspan = int(cell.get("colspan", 1))
@@ -114,7 +129,7 @@ def html_table_to_dataframe(table) -> pd.DataFrame:
             for _ in range(colspan):
                 values.append(text)
 
-        # Ligne d'en-tête : uniquement des <th> et pas de <td>
+
         if th_cells and not td_cells:
             if not headers:
                 headers = values
@@ -148,10 +163,10 @@ def html_table_to_dataframe(table) -> pd.DataFrame:
 
     df = pd.DataFrame(cleaned_rows, columns=headers)
 
-    # Nettoyage des noms de colonnes
+
     df.columns = [normalize_column_name(col) for col in df.columns]
 
-    # Évite les colonnes avec le même nom
+
     unique_columns = []
     seen = {}
 
@@ -170,8 +185,9 @@ def html_table_to_dataframe(table) -> pd.DataFrame:
 
 def find_target_table(html_content: str) -> pd.DataFrame:
     """
-    Trouve le tableau principal contenant les gares européennes.
-    Version sans pandas.read_html, donc sans lxml.
+    Recherche dans la page HTML le tableau correspondant aux gares européennes.
+
+    Le tableau cible est identifié grâce à des mots-clés comme country, city et railway station.
     """
     soup = BeautifulSoup(html_content, "html.parser")
     tables = soup.find_all("table", class_="wikitable")
@@ -194,11 +210,12 @@ def find_target_table(html_content: str) -> pd.DataFrame:
     raise ValueError("Aucun tableau correspondant aux gares européennes n'a été trouvé.")
 
 
-
 def clean_scraped_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Nettoyage léger pour l'extraction.
-    La vraie harmonisation sera faite plus tard dans transformation/.
+    Nettoie légèrement le tableau extrait de Wikipedia.
+
+    Le but est seulement de supprimer les lignes vides et doublons. L'harmonisation complète est
+    réalisée plus tard dans le script de transformation.
     """
     df = df.copy()
 
@@ -214,7 +231,9 @@ def clean_scraped_dataframe(df: pd.DataFrame) -> pd.DataFrame:
 
 def save_csv(df: pd.DataFrame) -> None:
     """
-    Sauvegarde le tableau extrait en CSV brut.
+    Sauvegarde un DataFrame dans le dossier des données transformées ou brutes.
+
+    La fonction centralise l'écriture CSV et affiche le nombre de lignes générées.
     """
     df.to_csv(CSV_PATH, index=False, encoding="utf-8")
     print(f"[OK] CSV sauvegardé : {CSV_PATH}")
@@ -226,7 +245,10 @@ def save_csv(df: pd.DataFrame) -> None:
 
 def save_metadata(row_count: int, columns: list[str]) -> None:
     """
-    Sauvegarde les métadonnées de l'extraction scraping.
+    Écrit un fichier metadata.json décrivant l'extraction.
+
+    Les métadonnées permettent de savoir quelle source a été utilisée, quand elle a été
+    extraite et quels fichiers bruts ont été produits.
     """
     metadata = {
         "source_name": SOURCE_NAME,
@@ -252,7 +274,9 @@ def save_metadata(row_count: int, columns: list[str]) -> None:
 
 def scrape_wikipedia_busiest_stations() -> None:
     """
-    Fonction principale d'extraction par scraping.
+    Lance l'extraction complète de la source Wikipedia.
+
+    Elle télécharge la page, trouve le bon tableau, le nettoie, puis sauvegarde le CSV et les métadonnées.
     """
     print("Début extraction source 4 : scraping Wikipedia")
 

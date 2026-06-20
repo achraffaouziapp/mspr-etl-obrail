@@ -1,3 +1,10 @@
+"""
+Transforme toutes les sources brutes du projet ObRail en fichiers CSV relationnels.
+
+Ce script harmonise les sources hétérogènes, crée les dimensions, construit les routes,
+les trajets, les arrêts et les contrôles qualité, puis exporte le résultat dans data/processed.
+"""
+
 from pathlib import Path
 from datetime import datetime, date, timedelta, timezone
 import json
@@ -7,10 +14,6 @@ import pycountry
 
 import pandas as pd
 
-
-# ============================================================
-# Chemins du projet
-# ============================================================
 
 RAW_DIR = Path("data/raw")
 PROCESSED_DIR = Path("data/processed")
@@ -22,18 +25,21 @@ WIKI_DIR = RAW_DIR / "wikipedia_busiest_stations_europe"
 EUROPEAN_SLEEPER_DIR = RAW_DIR / "european_sleeper"
 
 
-# ============================================================
-# Fonctions utilitaires
-# ============================================================
-
 def ensure_output_dir():
+    """
+    Crée le dossier data/processed s'il n'existe pas encore.
+
+    Toutes les tables transformées sont exportées dans ce dossier.
+    """
     PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def normalize_column_name(column_name: str) -> str:
     """
-    Transforme un nom de colonne en snake_case.
-    Exemple : "Stop Name" -> "stop_name"
+    Convertit un nom de colonne en format simple et stable.
+
+    Les espaces, accents faibles, ponctuations ou caractères spéciaux sont remplacés pour obtenir
+    des noms plus faciles à utiliser pendant la transformation.
     """
     column_name = str(column_name).strip().lower()
     column_name = re.sub(r"[^a-z0-9]+", "_", column_name)
@@ -42,12 +48,22 @@ def normalize_column_name(column_name: str) -> str:
 
 
 def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Applique le nettoyage des noms de colonnes à tout un DataFrame.
+
+    Cela permet de manipuler les colonnes de manière cohérente malgré les différences entre sources.
+    """
     df = df.copy()
     df.columns = [normalize_column_name(col) for col in df.columns]
     return df
 
 
 def clean_string(value):
+    """
+    Nettoie une valeur texte et transforme les valeurs vides en None.
+
+    Cette fonction évite de garder des chaînes comme 'nan', 'null' ou des espaces inutiles.
+    """
     if pd.isna(value):
         return None
 
@@ -61,7 +77,9 @@ def clean_string(value):
 
 def get_column(df: pd.DataFrame, possible_names: list[str]):
     """
-    Retourne le vrai nom d'une colonne en cherchant dans plusieurs noms possibles.
+    Retrouve une colonne même si son nom varie selon la source.
+
+    Les fichiers Open Data n'utilisent pas toujours les mêmes libellés. Cette fonction rend le code plus robuste.
     """
     normalized = [normalize_column_name(name) for name in possible_names]
 
@@ -73,6 +91,11 @@ def get_column(df: pd.DataFrame, possible_names: list[str]):
 
 
 def get_series(df: pd.DataFrame, possible_names: list[str], default_value=None) -> pd.Series:
+    """
+    Récupère une colonne sous forme de Series ou crée une colonne par défaut.
+
+    Cela évite de bloquer la transformation quand une source ne contient pas un champ optionnel.
+    """
     col = get_column(df, possible_names)
 
     if col is None:
@@ -82,17 +105,20 @@ def get_series(df: pd.DataFrame, possible_names: list[str], default_value=None) 
 
 
 def save_csv(df: pd.DataFrame, file_name: str):
+    """
+    Sauvegarde un DataFrame dans le dossier des données transformées ou brutes.
+
+    La fonction centralise l'écriture CSV et affiche le nombre de lignes générées.
+    """
     output_path = PROCESSED_DIR / file_name
     df.to_csv(output_path, index=False, encoding="utf-8")
     print(f"[OK] {file_name} généré : {len(df)} lignes")
 
 def convert_nullable_integer_columns(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
     """
-    Convertit des colonnes en entiers nullable.
-    Exemple :
-    0.0 -> 0
-    1.0 -> 1
-    NaN -> valeur vide dans le CSV
+    Convertit des colonnes numériques en entiers compatibles avec des valeurs manquantes.
+
+    Cette fonction est utile quand pandas a besoin de représenter des entiers avec des valeurs vides.
     """
     df = df.copy()
 
@@ -105,15 +131,9 @@ def convert_nullable_integer_columns(df: pd.DataFrame, columns: list[str]) -> pd
 
 def force_integer_csv_columns(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
     """
-    Force certaines colonnes à être exportées comme entiers propres dans le CSV.
+    Force certaines colonnes à être écrites comme de vrais entiers dans le CSV.
 
-    Exemple :
-    0.0 -> 0
-    1.0 -> 1
-    NaN -> vide
-
-    Cette fonction évite les erreurs PostgreSQL du type :
-    invalid input syntax for type integer: "0.0"
+    Cette étape évite les erreurs PostgreSQL lorsque pandas exporte des identifiants sous forme 0.0 ou 1.0.
     """
     df = df.copy()
 
@@ -129,7 +149,9 @@ def force_integer_csv_columns(df: pd.DataFrame, columns: list[str]) -> pd.DataFr
 
 def next_id(df: pd.DataFrame, id_column: str) -> int:
     """
-    Retourne le prochain identifiant entier disponible dans un DataFrame.
+    Calcule le prochain identifiant disponible pour une table en mémoire.
+
+    La fonction est utilisée lorsqu'une nouvelle ligne doit être ajoutée après une première transformation.
     """
     if df.empty or id_column not in df.columns:
         return 1
@@ -143,7 +165,9 @@ def next_id(df: pd.DataFrame, id_column: str) -> int:
 
 def read_csv_auto(path: Path) -> pd.DataFrame:
     """
-    Lit un CSV avec détection automatique du séparateur.
+    Lit un fichier CSV en détectant automatiquement son séparateur.
+
+    Cette lecture souple permet de gérer des fichiers séparés par virgule, point-virgule ou autre format courant.
     """
     if not path.exists():
         return pd.DataFrame()
@@ -156,14 +180,11 @@ def read_csv_auto(path: Path) -> pd.DataFrame:
     return normalize_columns(df)
 
 
-
 def read_json_auto(path: Path) -> pd.DataFrame:
     """
-    Lit un JSON pouvant être :
-    - une liste de dictionnaires
-    - un dictionnaire simple
-    - un dictionnaire contenant une liste de dictionnaires
-    - un dictionnaire de dictionnaires, très fréquent avec Back-on-Track
+    Lit différents formats JSON et les convertit en DataFrame.
+
+    La fonction gère les listes, les dictionnaires simples, les dictionnaires de dictionnaires et les fichiers metadata.
     """
     if not path.exists():
         return pd.DataFrame()
@@ -171,7 +192,7 @@ def read_json_auto(path: Path) -> pd.DataFrame:
     with open(path, "r", encoding="utf-8") as file:
         data = json.load(file)
 
-    # Cas 1 : liste JSON
+
     if isinstance(data, list):
         if len(data) == 0:
             return pd.DataFrame()
@@ -181,15 +202,10 @@ def read_json_auto(path: Path) -> pd.DataFrame:
 
         return normalize_columns(pd.DataFrame({"value": data}))
 
-    # Cas 2 : dictionnaire JSON
+
     if isinstance(data, dict):
 
-        # Cas 2A : dictionnaire de dictionnaires
-        # Exemple :
-        # {
-        #   "stop_1": {"name": "..."},
-        #   "stop_2": {"name": "..."}
-        # }
+
         if len(data) > 0 and all(isinstance(value, dict) for value in data.values()):
             rows = []
 
@@ -200,29 +216,23 @@ def read_json_auto(path: Path) -> pd.DataFrame:
 
             return normalize_columns(pd.json_normalize(rows))
 
-        # Cas 2B : dictionnaire contenant une liste de dictionnaires
+
         for key, value in data.items():
             if isinstance(value, list) and len(value) > 0:
                 if all(isinstance(item, dict) for item in value):
                     return normalize_columns(pd.json_normalize(value))
 
-        # Cas 2C : dictionnaire simple, comme metadata.json
+
         return normalize_columns(pd.DataFrame([data]))
 
     return pd.DataFrame()
 
 
-
-
-
 def gtfs_time_to_minutes(value):
     """
-    Convertit une heure en minutes.
+    Convertit une heure GTFS ou Back-on-Track en nombre total de minutes.
 
-    Formats acceptés :
-    - GTFS classique : 23:30:00
-    - GTFS avec dépassement de 24h : 25:10:00
-    - Back-on-Track datetime : 1899-12-30T05:36:00.000Z
+    Le calcul en minutes facilite la comparaison des heures et le calcul des durées de trajet.
     """
     value = clean_string(value)
 
@@ -231,7 +241,7 @@ def gtfs_time_to_minutes(value):
 
     value = str(value).strip()
 
-    # Cas 1 : format GTFS HH:MM:SS ou HH:MM
+
     gtfs_match = re.match(r"^(\d{1,3}):(\d{2})(?::(\d{2}))?$", value)
 
     if gtfs_match:
@@ -241,15 +251,14 @@ def gtfs_time_to_minutes(value):
 
         return hours * 60 + minutes + round(seconds / 60)
 
-    # Cas 2 : format datetime Back-on-Track
+
     try:
         parsed = pd.to_datetime(value, errors="coerce", utc=True)
 
         if pd.isna(parsed):
             return None
 
-        # Back-on-Track encode souvent les heures avec la date 1899-12-30.
-        # Si la date est 1899-12-31, on considère que c'est le lendemain.
+
         base_date = pd.Timestamp("1899-12-30", tz="UTC").date()
 
         if parsed.year == 1899:
@@ -273,12 +282,9 @@ def gtfs_time_to_minutes(value):
 
 def gtfs_time_to_sql_time_and_offset(value):
     """
-    Convertit une heure en heure SQL + offset de jour.
+    Convertit une heure source en heure SQL et en décalage de jour.
 
-    Exemples :
-    - 25:10:00 -> 01:10:00, offset 1
-    - 1899-12-30T22:48:00.000Z -> 22:48:00, offset 0
-    - 1899-12-31T01:10:00.000Z -> 01:10:00, offset 1
+    Cette fonction permet de représenter correctement les trajets qui arrivent après minuit.
     """
     total_minutes = gtfs_time_to_minutes(value)
 
@@ -294,14 +300,20 @@ def gtfs_time_to_sql_time_and_offset(value):
     return f"{hours:02d}:{minutes:02d}:00", int(day_offset)
 
 def build_key(*values):
+    """
+    Construit une clé texte stable à partir de plusieurs valeurs.
+
+    Ces clés temporaires servent à dédupliquer les pays, villes, gares et routes avant d'attribuer les identifiants.
+    """
     cleaned = [str(v).strip().lower() for v in values if v is not None and str(v).strip() != ""]
     return "|".join(cleaned)
 
 
 def country_name_from_code(country_code):
     """
-    Convertit un code pays ISO en nom de pays.
-    Exemple : FR -> France
+    Retrouve le nom d'un pays à partir de son code ISO à deux lettres.
+
+    Cette fonction est utilisée pendant l'enrichissement géographique par coordonnées.
     """
     country_code = clean_string(country_code)
 
@@ -320,10 +332,9 @@ def country_name_from_code(country_code):
 
 def infer_location_from_coordinates(df):
     """
-    Déduit city_name, country_name et country_code à partir de latitude/longitude.
+    Déduit le pays et parfois la ville à partir des coordonnées GPS.
 
-    Cette fonction utilise reverse_geocoder en local.
-    Elle ne dépend pas d'une API externe.
+    Cette étape réduit le nombre de gares classées Unknown quand la source fournit latitude et longitude.
     """
     df = df.copy()
 
@@ -386,9 +397,6 @@ def infer_location_from_coordinates(df):
 
     return df
 
-# ============================================================
-# Correction des codes pays
-# ============================================================
 
 COUNTRY_CODE_BY_NAME = {
     "Austria": "AT",
@@ -425,8 +433,9 @@ COUNTRY_CODE_BY_NAME = {
 
 def fix_country_code(country_name, country_code):
     """
-    Corrige le code pays quand il est manquant ou égal à UNK.
-    Exemple : Austria + UNK devient Austria + AT.
+    Corrige un code pays manquant à partir du nom du pays.
+
+    Elle complète par exemple Germany en DE ou France en FR lorsque le code source est absent.
     """
     country_name = clean_string(country_name)
     country_code = clean_string(country_code)
@@ -440,16 +449,17 @@ def fix_country_code(country_name, country_code):
     return "UNK"
 
 
-# ============================================================
-# Chargement des sources brutes
-# ============================================================
-
 def load_raw_sources():
+    """
+    Charge toutes les sources brutes nécessaires à la transformation.
+
+    Chaque source est lue dans un DataFrame et affichée avec son nombre de lignes pour faciliter le suivi.
+    """
     print("Chargement des sources brutes...")
 
     raw = {}
 
-    # Source 1 : Back-on-Track
+
     raw["bot_agencies"] = read_json_auto(BACK_ON_TRACK_DIR / "agencies.json")
     raw["bot_stops"] = read_json_auto(BACK_ON_TRACK_DIR / "stops.json")
     raw["bot_routes"] = read_json_auto(BACK_ON_TRACK_DIR / "routes.json")
@@ -458,7 +468,7 @@ def load_raw_sources():
     raw["bot_calendar_dates"] = read_json_auto(BACK_ON_TRACK_DIR / "calendar_dates.json")
     raw["bot_metadata"] = read_json_auto(BACK_ON_TRACK_DIR / "metadata.json")
 
-    # Source 2 : SNCF GTFS
+
     raw["sncf_agency"] = read_csv_auto(SNCF_GTFS_DIR / "agency.txt")
     raw["sncf_stops"] = read_csv_auto(SNCF_GTFS_DIR / "stops.txt")
     raw["sncf_routes"] = read_csv_auto(SNCF_GTFS_DIR / "routes.txt")
@@ -466,13 +476,13 @@ def load_raw_sources():
     raw["sncf_stop_times"] = read_csv_auto(SNCF_GTFS_DIR / "stop_times.txt")
     raw["sncf_calendar_dates"] = read_csv_auto(SNCF_GTFS_DIR / "calendar_dates.txt")
 
-    # Source 3 : Gares de voyageurs
+
     raw["gares"] = read_csv_auto(GARES_DIR / "gares-de-voyageurs.csv")
 
-    # Source 4 : Wikipedia scraping
+
     raw["wiki"] = read_csv_auto(WIKI_DIR / "busiest_railway_stations_europe.csv")
 
-    # Source 5 : European Sleeper
+
     raw["es_stations"] = read_csv_auto(EUROPEAN_SLEEPER_DIR / "european_sleeper_stations.csv")
     raw["es_routes"] = read_csv_auto(EUROPEAN_SLEEPER_DIR / "european_sleeper_routes.csv")
     raw["es_stop_times"] = read_csv_auto(EUROPEAN_SLEEPER_DIR / "european_sleeper_stop_times.csv")
@@ -484,11 +494,12 @@ def load_raw_sources():
     return raw
 
 
-# ============================================================
-# DATA_SOURCE
-# ============================================================
-
 def transform_data_source():
+    """
+    Crée la table data_source.
+
+    Cette table décrit les fichiers et sites utilisés pour construire l'entrepôt de données.
+    """
     data_sources = [
         {
             "data_source_id": 1,
@@ -545,11 +556,12 @@ def transform_data_source():
     return pd.DataFrame(data_sources)
 
 
-# ============================================================
-# TRAIN_TYPE
-# ============================================================
-
 def transform_train_type():
+    """
+    Crée la table train_type avec les catégories métier du projet.
+
+    Les identifiants sont fixés pour distinguer les trains de nuit et les trains de jour.
+    """
     return pd.DataFrame([
         {
             "train_type_id": 1,
@@ -562,15 +574,11 @@ def transform_train_type():
     ])
 
 
-# ============================================================
-# COUNTRY, CITY, STATION
-# ============================================================
-
 def extract_stations_from_sncf_gtfs(sncf_stops: pd.DataFrame):
     """
-    Source GTFS SNCF.
-    On considère les gares comme françaises.
-    Si la ville n'est pas fournie, on utilise le nom de la gare comme ville provisoire.
+    Extrait les gares depuis le fichier GTFS stops.txt de la SNCF.
+
+    Les stops GTFS sont convertis en gares avec leurs coordonnées et rattachés à la France dans cette version du projet.
     """
     if sncf_stops.empty:
         return pd.DataFrame()
@@ -601,9 +609,9 @@ def extract_stations_from_sncf_gtfs(sncf_stops: pd.DataFrame):
 
 def extract_stations_from_gares(gares: pd.DataFrame):
     """
-    Source gares-de-voyageurs.
-    Les noms de colonnes peuvent varier selon l'export,
-    donc on cherche plusieurs noms possibles.
+    Extrait les gares depuis le référentiel officiel des gares de voyageurs.
+
+    La fonction cherche plusieurs noms possibles de colonnes afin de rester compatible avec différents exports CSV.
     """
     if gares.empty:
         return pd.DataFrame()
@@ -644,7 +652,7 @@ def extract_stations_from_gares(gares: pd.DataFrame):
         "lng"
     ])
 
-    # Certains exports ont une colonne géographique du type "geo_point_2d"
+
     geo_col = get_column(gares, [
         "geo_point_2d",
         "coordonnees_geographiques",
@@ -702,8 +710,9 @@ def extract_stations_from_gares(gares: pd.DataFrame):
 
 def extract_stations_from_wikipedia(wiki: pd.DataFrame):
     """
-    Source scraping Wikipedia.
-    Sert surtout à enrichir les pays, villes et gares européennes.
+    Extrait les gares, villes et pays depuis le tableau Wikipedia.
+
+    Cette source sert surtout à enrichir la couverture géographique européenne.
     """
     if wiki.empty:
         return pd.DataFrame()
@@ -736,8 +745,9 @@ def extract_stations_from_wikipedia(wiki: pd.DataFrame):
 
 def extract_stations_from_back_on_track(bot_stops: pd.DataFrame):
     """
-    Source Back-on-Track.
-    On essaie de récupérer station, ville, pays, coordonnées.
+    Extrait les gares présentes dans les données Back-on-Track.
+
+    La fonction récupère les noms, codes, villes, pays et coordonnées quand ils sont disponibles.
     """
     if bot_stops.empty:
         return pd.DataFrame()
@@ -793,6 +803,11 @@ def extract_stations_from_back_on_track(bot_stops: pd.DataFrame):
 
 
 def transform_geo_and_stations(raw):
+    """
+    Construit les tables country, city et station à partir de toutes les sources de gares.
+
+    Les gares sont nettoyées, enrichies par coordonnées si besoin, dédupliquées puis reliées aux villes et pays.
+    """
     print("\nTransformation COUNTRY, CITY, STATION...")
 
     station_sources = [
@@ -831,14 +846,14 @@ def transform_geo_and_stations(raw):
         lambda row: fix_country_code(row["country_name"], row["country_code"]),
         axis=1
     )
-    
-    # Correction des codes pays manquants à partir du nom du pays
+
+
     all_stations_raw["country_code"] = all_stations_raw.apply(
         lambda row: fix_country_code(row["country_name"], row["country_code"]),
         axis=1
     )
 
-    # COUNTRY
+
     countries = (
         all_stations_raw[["country_name", "country_code"]]
         .drop_duplicates()
@@ -861,7 +876,7 @@ def transform_geo_and_stations(raw):
 
     all_stations_raw["country_id"] = all_stations_raw["country_key"].map(country_key_to_id)
 
-    # CITY
+
     cities = (
         all_stations_raw[["city_name", "country_id"]]
         .drop_duplicates()
@@ -884,7 +899,7 @@ def transform_geo_and_stations(raw):
 
     all_stations_raw["city_id"] = all_stations_raw["city_key"].map(city_key_to_id)
 
-    # STATION
+
     all_stations_raw["station_key"] = all_stations_raw.apply(
         lambda row: build_key(row["station_code"], row["station_name"], row["city_id"]),
         axis=1
@@ -910,7 +925,7 @@ def transform_geo_and_stations(raw):
         ]
     ]
 
-    # Mapping utile pour les trajets
+
     station_code_to_id = {}
 
     for row in stations.itertuples(index=False):
@@ -920,22 +935,23 @@ def transform_geo_and_stations(raw):
     return countries, cities, stations, station_code_to_id
 
 
-# ============================================================
-# OPERATOR
-# ============================================================
-
 def transform_operators(raw, countries):
+    """
+    Construit la table operator à partir des agences présentes dans les sources.
+
+    Les libellés d'origine sont conservés pour garder la traçabilité des opérateurs.
+    """
     print("\nTransformation OPERATOR...")
 
     operators_data = []
 
-    # Back-on-Track agencies
+
     bot_agencies = raw["bot_agencies"]
 
     if not bot_agencies.empty:
         agency_id_col = get_column(bot_agencies, ["agency_id", "id", "operator_id", "code", "_source_key"])
         agency_name_col = get_column(bot_agencies, ["agency_name", "name", "operator_name", "_source_key"])
-        
+
         for _, row in bot_agencies.iterrows():
             operator_code = clean_string(row[agency_id_col]) if agency_id_col else None
             operator_name = clean_string(row[agency_name_col]) if agency_name_col else operator_code
@@ -947,7 +963,7 @@ def transform_operators(raw, countries):
                     "country_code": "UNK"
                 })
 
-    # SNCF agency
+
     sncf_agency = raw["sncf_agency"]
 
     if not sncf_agency.empty:
@@ -964,7 +980,7 @@ def transform_operators(raw, countries):
                 "country_code": "FR"
             })
 
-    # Valeur par défaut
+
     operators_data.append({
         "operator_name": "Unknown operator",
         "operator_code": "UNKNOWN",
@@ -1008,11 +1024,12 @@ def transform_operators(raw, countries):
     return operators, operator_code_to_id, unknown_operator_id
 
 
-# ============================================================
-# ROUTE, TRIP, TRIP_STOP depuis SNCF GTFS
-# ============================================================
-
 def transform_sncf_trips(raw, station_code_to_id, operator_code_to_id, unknown_operator_id):
+    """
+    Transforme les fichiers GTFS SNCF en routes, trajets et arrêts.
+
+    Ces trajets sont classés en trains de jour dans la version actuelle du modèle.
+    """
     print("\nTransformation des trajets SNCF GTFS...")
 
     stops = raw["sncf_stops"]
@@ -1033,7 +1050,7 @@ def transform_sncf_trips(raw, station_code_to_id, operator_code_to_id, unknown_o
         if stop_code in station_code_to_id:
             stop_to_station_id[stop_code] = station_code_to_id[stop_code]
 
-    # Préparation stop_times
+
     trip_id_col = get_column(stop_times, ["trip_id"])
     stop_id_col_st = get_column(stop_times, ["stop_id"])
     stop_sequence_col = get_column(stop_times, ["stop_sequence"])
@@ -1084,7 +1101,7 @@ def transform_sncf_trips(raw, station_code_to_id, operator_code_to_id, unknown_o
         "arrival_time_raw": "raw_arrival_time"
     })
 
-    # Préparation trips
+
     trips_trip_id_col = get_column(trips_src, ["trip_id"])
     trips_route_id_col = get_column(trips_src, ["route_id"])
     trips_service_id_col = get_column(trips_src, ["service_id"])
@@ -1095,7 +1112,7 @@ def transform_sncf_trips(raw, station_code_to_id, operator_code_to_id, unknown_o
         "service_id": trips_src[trips_service_id_col].apply(clean_string)
     })
 
-    # Date de service depuis calendar_dates
+
     if not calendar_dates.empty:
         service_col = get_column(calendar_dates, ["service_id"])
         date_col = get_column(calendar_dates, ["date"])
@@ -1106,7 +1123,7 @@ def transform_sncf_trips(raw, station_code_to_id, operator_code_to_id, unknown_o
         service_dates["service_id"] = service_dates["service_id"].apply(clean_string)
         service_dates["service_date"] = service_dates["service_date"].apply(clean_string)
 
-        # On prend la première date trouvée par service_id pour simplifier la V1
+
         service_dates = service_dates.drop_duplicates(subset=["service_id"])
 
         trips_work = trips_work.merge(service_dates, on="service_id", how="left")
@@ -1115,7 +1132,7 @@ def transform_sncf_trips(raw, station_code_to_id, operator_code_to_id, unknown_o
 
     trips_work = trips_work.merge(bounds, on="source_trip_code", how="inner")
 
-    # Opérateur depuis routes
+
     if not routes_src.empty:
         route_id_col = get_column(routes_src, ["route_id"])
         agency_id_col = get_column(routes_src, ["agency_id"])
@@ -1132,7 +1149,7 @@ def transform_sncf_trips(raw, station_code_to_id, operator_code_to_id, unknown_o
     trips_work["operator_id"] = trips_work["operator_code"].map(operator_code_to_id)
     trips_work["operator_id"] = trips_work["operator_id"].fillna(unknown_operator_id).astype(int)
 
-    # Route key
+
     trips_work["route_key"] = trips_work.apply(
         lambda row: build_key(row["departure_station_id"], row["arrival_station_id"], row["operator_id"]),
         axis=1
@@ -1157,11 +1174,11 @@ def transform_sncf_trips(raw, station_code_to_id, operator_code_to_id, unknown_o
     route_key_to_id = dict(zip(routes["route_key"], routes["route_id"]))
     trips_work["route_id"] = trips_work["route_key"].map(route_key_to_id)
 
-    # TRIP
+
     trips = trips_work.drop_duplicates(subset=["source_trip_code"]).reset_index(drop=True)
     trips["trip_id"] = range(1, len(trips) + 1)
 
-    # SNCF GTFS = day par défaut pour cette V1
+
     trips["train_type_id"] = 2
     trips["data_source_id"] = 2
     trips["trip_code"] = trips["source_trip_code"]
@@ -1202,7 +1219,7 @@ def transform_sncf_trips(raw, station_code_to_id, operator_code_to_id, unknown_o
 
     source_trip_to_trip_id = dict(zip(trips_final["trip_code"], trips_final["trip_id"]))
 
-    # TRIP_STOP
+
     trip_stops = st.copy()
     trip_stops["trip_id"] = trip_stops["source_trip_code"].map(source_trip_to_trip_id)
     trip_stops = trip_stops.dropna(subset=["trip_id"])
@@ -1255,6 +1272,11 @@ def transform_back_on_track_trips(
     trip_start_id,
     trip_stop_start_id
 ):
+    """
+    Transforme Back-on-Track en routes, trajets et arrêts de trains de nuit.
+
+    La fonction gère les formats JSON variables et convertit les horaires en format compatible PostgreSQL.
+    """
     print("\nTransformation des trajets Back-on-Track night...")
 
     routes_src = raw["bot_routes"]
@@ -1266,9 +1288,6 @@ def transform_back_on_track_trips(
         print("[ATTENTION] Données Back-on-Track insuffisantes pour créer les trajets night.")
         return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
-    # --------------------------------------------------------
-    # Préparation des arrêts Back-on-Track
-    # --------------------------------------------------------
 
     trip_id_col = get_column(trip_stops_src, [
         "trip_id",
@@ -1346,13 +1365,6 @@ def transform_back_on_track_trips(
     st["stop_order"] = st["stop_order"].astype(int)
     st = st.sort_values(["source_trip_code", "stop_order"])
 
-    # --------------------------------------------------------
-    # Départ et arrivée de chaque trip
-    # --------------------------------------------------------
-
-        # --------------------------------------------------------
-    # Départ et arrivée de chaque trip
-    # --------------------------------------------------------
 
     first_stops = st.groupby("source_trip_code", as_index=False).first()
     last_stops = st.groupby("source_trip_code", as_index=False).last()
@@ -1389,12 +1401,12 @@ def transform_back_on_track_trips(
         how="inner"
     )
 
-    # Fallback : si l'heure de départ est absente, on prend l'heure d'arrivée du premier arrêt
+
     bounds["raw_departure_time"] = bounds["raw_departure_time"].fillna(
         bounds["first_arrival_time_raw"]
     )
 
-    # Fallback : si l'heure d'arrivée est absente, on prend l'heure de départ du dernier arrêt
+
     bounds["raw_arrival_time"] = bounds["raw_arrival_time"].fillna(
         bounds["last_departure_time_raw"]
     )
@@ -1409,9 +1421,6 @@ def transform_back_on_track_trips(
         ]
     ]
 
-    # --------------------------------------------------------
-    # Préparation trips Back-on-Track
-    # --------------------------------------------------------
 
     trips_trip_id_col = get_column(trips_src, [
         "trip_id",
@@ -1449,9 +1458,6 @@ def transform_back_on_track_trips(
         print("[ATTENTION] Aucun trip Back-on-Track n'a pu être relié aux arrêts.")
         return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
-    # --------------------------------------------------------
-    # Date de service depuis calendar_dates si disponible
-    # --------------------------------------------------------
 
     if calendar_dates is not None and not calendar_dates.empty and "service_id" in trips_work.columns:
         service_col = get_column(calendar_dates, ["service_id", "service"])
@@ -1472,9 +1478,6 @@ def transform_back_on_track_trips(
     else:
         trips_work["service_date"] = None
 
-    # --------------------------------------------------------
-    # Opérateur depuis bot_routes
-    # --------------------------------------------------------
 
     trips_work["operator_code"] = None
 
@@ -1508,9 +1511,6 @@ def transform_back_on_track_trips(
     trips_work["operator_id"] = trips_work["operator_code"].map(operator_code_to_id)
     trips_work["operator_id"] = trips_work["operator_id"].fillna(unknown_operator_id).astype(int)
 
-    # --------------------------------------------------------
-    # ROUTE
-    # --------------------------------------------------------
 
     trips_work["route_key"] = trips_work.apply(
         lambda row: build_key(
@@ -1550,9 +1550,6 @@ def transform_back_on_track_trips(
         ]
     ]
 
-    # --------------------------------------------------------
-    # TRIP night
-    # --------------------------------------------------------
 
     trips = trips_work.drop_duplicates(subset=["source_trip_code"]).reset_index(drop=True)
 
@@ -1575,7 +1572,7 @@ def transform_back_on_track_trips(
 
     trips["duration_minutes"] = trips["_arrival_minutes"] - trips["_departure_minutes"]
 
-    # Si l'arrivée est le lendemain mais non codée en +24h, on ajoute 24h
+
     trips.loc[trips["duration_minutes"] < 0, "duration_minutes"] = (
         trips.loc[trips["duration_minutes"] < 0, "duration_minutes"] + 1440
     )
@@ -1601,9 +1598,6 @@ def transform_back_on_track_trips(
 
     source_trip_to_trip_id = dict(zip(trips_final["trip_code"], trips_final["trip_id"]))
 
-    # --------------------------------------------------------
-    # TRIP_STOP night
-    # --------------------------------------------------------
 
     trip_stops = st.copy()
 
@@ -1646,11 +1640,6 @@ def transform_back_on_track_trips(
     return routes_final, trips_final, trip_stops_final
 
 
-
-# ============================================================
-# EUROPEAN SLEEPER
-# ============================================================
-
 EUROPEAN_SLEEPER_SERVICE_START_DATE = date(2026, 6, 19)
 EUROPEAN_SLEEPER_SERVICE_END_DATE = date(2026, 12, 31)
 
@@ -1667,7 +1656,7 @@ EUROPEAN_SLEEPER_DAY_NAME_TO_WEEKDAY = {
 
 def es_to_int(value):
     """
-    Convertit une valeur numérique en entier.
+    Convertit une valeur European Sleeper en entier quand elle est renseignée.
     """
     if pd.isna(value) or str(value).strip() == "":
         return None
@@ -1677,7 +1666,7 @@ def es_to_int(value):
 
 def es_time_to_minutes(time_value, day_offset=0):
     """
-    Convertit une heure HH:MM:SS + offset de jour en minutes.
+    Convertit une heure European Sleeper et son décalage de jour en minutes.
     """
     if pd.isna(time_value) or str(time_value).strip() == "":
         return None
@@ -1691,7 +1680,9 @@ def es_time_to_minutes(time_value, day_offset=0):
 
 def generate_european_sleeper_service_dates(operating_days: str):
     """
-    Génère les dates de service European Sleeper entre deux dates fixes.
+    Génère les dates de circulation European Sleeper à partir des jours de service.
+
+    Les jours comme mon, wed ou fri sont convertis en dates concrètes sur la période définie.
     """
     allowed_weekdays = {
         EUROPEAN_SLEEPER_DAY_NAME_TO_WEEKDAY[item.strip()]
@@ -1709,6 +1700,9 @@ def generate_european_sleeper_service_dates(operating_days: str):
 
 
 def get_or_add_country_in_memory(country_df, country_name, country_code):
+    """
+    Retrouve un pays existant ou l'ajoute dans la table country en mémoire.
+    """
     country_name = clean_string(country_name) or "Unknown"
     country_code = (clean_string(country_code) or "UNK").upper()
 
@@ -1735,6 +1729,9 @@ def get_or_add_country_in_memory(country_df, country_name, country_code):
 
 
 def get_or_add_city_in_memory(city_df, city_name, country_id):
+    """
+    Retrouve une ville existante ou l'ajoute dans la table city en mémoire.
+    """
     city_name = clean_string(city_name) or "Unknown"
 
     match = city_df[
@@ -1760,6 +1757,9 @@ def get_or_add_city_in_memory(city_df, city_name, country_id):
 
 
 def get_or_add_station_in_memory(station_df, station_row, city_id):
+    """
+    Retrouve une gare existante ou l'ajoute dans la table station en mémoire.
+    """
     station_code = clean_string(station_row.get("station_code"))
     station_name = clean_string(station_row.get("station_name"))
 
@@ -1800,6 +1800,9 @@ def get_or_add_station_in_memory(station_df, station_row, city_id):
 
 
 def get_or_add_european_sleeper_operator(operator_df, country_df):
+    """
+    Retrouve ou ajoute l'opérateur European Sleeper dans la table operator.
+    """
     operator_name = "European Sleeper"
     operator_code = "ES"
 
@@ -1832,6 +1835,9 @@ def get_or_add_european_sleeper_operator(operator_df, country_df):
 
 
 def get_or_add_european_sleeper_route(route_df, departure_station_id, arrival_station_id, operator_id):
+    """
+    Retrouve ou ajoute une route European Sleeper dans la table route.
+    """
     numeric_route = route_df.copy()
     numeric_route["departure_station_id"] = pd.to_numeric(
         numeric_route["departure_station_id"],
@@ -1883,10 +1889,9 @@ def transform_european_sleeper(
     trip_stop
 ):
     """
-    Ajoute European Sleeper directement dans la transformation globale.
+    Intègre European Sleeper dans les tables déjà construites.
 
-    Cette fonction remplace l'ancien script séparé :
-    scripts/transformation/add_european_sleeper_to_processed.py
+    La fonction ajoute les gares, l'opérateur, les routes, les trajets de nuit et les arrêts associés.
     """
     print("\nTransformation European Sleeper night...")
 
@@ -1898,7 +1903,7 @@ def transform_european_sleeper(
         print("[INFO] Données European Sleeper absentes. Source ignorée.")
         return country, city, station, operator, data_source, route, trip, trip_stop
 
-    # Vérification / récupération de l'identifiant data_source
+
     source_name = "European Sleeper Timetable"
     source_match = data_source[
         data_source["source_name"].astype(str).str.lower() == source_name.lower()
@@ -1922,10 +1927,10 @@ def transform_european_sleeper(
     else:
         data_source_id = int(source_match.iloc[0]["data_source_id"])
 
-    # train_type night
+
     train_type_id = 1
 
-    # Ajout des dimensions pays / villes / gares
+
     european_station_code_to_id = {}
 
     for _, station_row in es_stations.iterrows():
@@ -1950,7 +1955,7 @@ def transform_european_sleeper(
         station_code = clean_string(station_row.get("station_code"))
         european_station_code_to_id[station_code] = station_id
 
-    # Ajout de l'opérateur
+
     operator_id, operator, country = get_or_add_european_sleeper_operator(
         operator,
         country
@@ -2072,11 +2077,12 @@ def transform_european_sleeper(
     return country, city, station, operator, data_source, route, trip, trip_stop
 
 
-# ============================================================
-# QUALITY_CHECK
-# ============================================================
-
 def transform_quality_check(trips: pd.DataFrame):
+    """
+    Crée la table quality_check à partir des trajets transformés.
+
+    Chaque trajet reçoit des indicateurs d'anomalie et un score qualité simple entre 0 et 100.
+    """
     print("\nTransformation QUALITY_CHECK...")
 
     if trips.empty:
@@ -2154,11 +2160,12 @@ def transform_quality_check(trips: pd.DataFrame):
     ]
 
 
-# ============================================================
-# Fonction principale
-# ============================================================
-
 def main():
+    """
+    Point d'entrée du script.
+
+    Cette fonction organise les étapes dans le bon ordre et affiche des messages de suivi dans le terminal.
+    """
     print("Début de la transformation globale...")
 
     ensure_output_dir()
@@ -2172,7 +2179,7 @@ def main():
 
     operator, operator_code_to_id, unknown_operator_id = transform_operators(raw, country)
 
-    # Trajets SNCF = day
+
     sncf_route, sncf_trip, sncf_trip_stop = transform_sncf_trips(
         raw=raw,
         station_code_to_id=station_code_to_id,
@@ -2180,7 +2187,7 @@ def main():
         unknown_operator_id=unknown_operator_id
     )
 
-    # Trajets Back-on-Track = night
+
     next_route_id = len(sncf_route) + 1
     next_trip_id = len(sncf_trip) + 1
     next_trip_stop_id = len(sncf_trip_stop) + 1
@@ -2195,12 +2202,12 @@ def main():
         trip_stop_start_id=next_trip_stop_id
     )
 
-    # Fusion SNCF day + Back-on-Track night
+
     route = pd.concat([sncf_route, bot_route], ignore_index=True)
     trip = pd.concat([sncf_trip, bot_trip], ignore_index=True)
     trip_stop = pd.concat([sncf_trip_stop, bot_trip_stop], ignore_index=True)
 
-    # Ajout European Sleeper directement dans la transformation globale
+
     country, city, station, operator, data_source, route, trip, trip_stop = transform_european_sleeper(
         raw=raw,
         country=country,
@@ -2213,11 +2220,10 @@ def main():
         trip_stop=trip_stop
     )
 
-    # Contrôle qualité après fusion complète de toutes les sources
+
     quality_check = transform_quality_check(trip)
 
-    # Correction des colonnes entières avant export CSV
-    # Empêche PostgreSQL de recevoir des valeurs comme 0.0 dans les colonnes INTEGER.
+
     country = force_integer_csv_columns(
         country,
         ["country_id"]
@@ -2291,7 +2297,7 @@ def main():
         ]
     )
 
-    # Sauvegarde finale
+
     save_csv(country, "country.csv")
     save_csv(city, "city.csv")
     save_csv(station, "station.csv")
