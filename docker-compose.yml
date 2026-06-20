@@ -1,15 +1,34 @@
+# Ce fichier lance les services nécessaires au projet avec Docker Compose.
+# Dans cette version, le seul service lancé est PostgreSQL.
+
 services:
   postgres:
+    # Image officielle PostgreSQL utilisée pour créer la base de données.
+    # La version 16 est fixée pour éviter les différences de comportement entre versions.
     image: postgres:16
+
+    # Nom du conteneur Docker.
+    # Ce nom permet de le retrouver facilement avec docker ps ou docker exec.
     container_name: obrail_postgres
+
+    # Variables utilisées par PostgreSQL au premier démarrage du conteneur.
+    # Elles créent automatiquement la base, l'utilisateur et le mot de passe.
     environment:
       POSTGRES_DB: obrail
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
+
+    # Rend PostgreSQL accessible depuis la machine locale.
+    # Le port 5432 du PC est relié au port 5432 du conteneur.
     ports:
       - "5432:5432"
+
+    # Stocke les données PostgreSQL dans un volume Docker persistant.
+    # Ainsi, la base n'est pas supprimée lorsque le conteneur est arrêté.
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+# Déclaration du volume utilisé par PostgreSQL.
+# Docker le gère automatiquement et le conserve entre les redémarrages.
 volumes:
   postgres_data:
