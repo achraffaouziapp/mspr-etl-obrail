@@ -12,17 +12,10 @@ from visualisation import (
     load_stations_by_country,
     load_top_operators,
     load_source_train_type_counts,
-    load_quality_stats,
-    load_quality_by_source,
-    load_quality_by_source_and_type,
-    load_anomalies,
     load_trips,
     load_route_network,
     create_horizontal_bar_chart,
     create_sunburst_chart,
-    create_heatmap_counts,
-    create_quality_heatmap,
-    create_radar_chart,
     create_network_graph,
 )
 
@@ -141,6 +134,24 @@ st.markdown(
             margin-top: 2rem;
             margin-bottom: 2rem;
         }
+
+        /* Supprime la ligne rouge sous l'onglet actif */
+        .stTabs [data-baseweb="tab-highlight"] {
+            display: none !important;
+        }
+
+        /* Supprime aussi la bordure/ligne active éventuelle */
+        .stTabs [data-baseweb="tab"] {
+            border-bottom: none !important;
+            box-shadow: none !important;
+        }
+
+        /* Garde un style propre pour l'onglet sélectionné */
+        .stTabs [aria-selected="true"] {
+            background-color: #E0F2FE !important;
+            color: #0369A1 !important;
+            border: 1px solid #7DD3FC !important;
+        }
     </style>
     """,
     unsafe_allow_html=True
@@ -196,7 +207,7 @@ except Exception as error:
 # Sidebar
 # ============================================================
 
-st.sidebar.title("Filtres")
+st.sidebar.title("Filtres exploration trajets")
 
 train_types_df = load_train_type_options()
 train_type_options = ["Tous"] + train_types_df["type_name"].tolist()
@@ -215,14 +226,10 @@ if selected_source_name != "Toutes":
         ].iloc[0]
     )
 
-anomaly_limit = st.sidebar.slider(
-    "Nombre d'anomalies affichées",
-    min_value=10,
-    max_value=300,
-    value=100,
-    step=10
+st.sidebar.info(
+    "Ces filtres s'appliquent uniquement à la table d'exploration des trajets "
+    "dans la page Réseau ferroviaire."
 )
-
 
 # ============================================================
 # KPI
@@ -261,10 +268,9 @@ with col7:
 # Onglets
 # ============================================================
 
-tab_exec, tab_transport, tab_quality, tab_network = st.tabs([
+tab_exec, tab_transport, tab_network = st.tabs([
     "Vue exécutive",
     "Analyse transport",
-    "Analyse qualité",
     "Réseau ferroviaire"
 ])
 
@@ -329,14 +335,22 @@ with tab_exec:
 # 2. Analyse transport
 # ============================================================
 
+# ============================================================
+# 2. Analyse transport
+# ============================================================
+
 with tab_transport:
     section(
         "Analyse transport",
-        "Lecture des volumes par opérateur, par source et par type de train."
+        "Cette page analyse les volumes de trajets selon les opérateurs, les sources de données et les types de train."
     )
 
     operators_df = load_top_operators(limit=15)
     counts_df = load_source_train_type_counts()
+
+    # --------------------------------------------------------
+    # Graphique 1 : Top opérateurs
+    # --------------------------------------------------------
 
     fig_operators = create_horizontal_bar_chart(
         operators_df,
@@ -347,57 +361,42 @@ with tab_transport:
     )
     chart_block(fig_operators)
 
-    fig_sunburst = create_sunburst_chart(counts_df, height=720)
+    explanation_block(
+        "Ce graphique présente les opérateurs ferroviaires les plus représentés dans l'entrepôt de données. "
+        "Il permet d'identifier rapidement quels opérateurs contribuent le plus au volume total de trajets. "
+        "Une forte présence d'un opérateur peut s'expliquer par le périmètre de la source utilisée, par exemple "
+        "une source GTFS nationale contenant un grand nombre de services."
+    )
+
+    # --------------------------------------------------------
+    # Graphique 2 : Sunburst source -> type de train
+    # --------------------------------------------------------
+
+    fig_sunburst = create_sunburst_chart(
+        counts_df,
+        height=720
+    )
     chart_block(fig_sunburst)
 
-    fig_heatmap_counts = create_heatmap_counts(counts_df, height=580)
-    chart_block(fig_heatmap_counts)
-
-
-# ============================================================
-# 3. Analyse qualité
-# ============================================================
-
-with tab_quality:
-    section(
-        "Analyse qualité",
-        "Contrôle visuel du score qualité, des valeurs manquantes, des erreurs horaires et des doublons."
+    explanation_block(
+        "Ce diagramme hiérarchique se lit de l'intérieur vers l'extérieur. "
+        "Le premier niveau représente les sources de données, par exemple SNCF GTFS, Back-on-Track ou European Sleeper. "
+        "Le second niveau représente le type de train associé à chaque source : day ou night. "
+        "Chaque couleur correspond à une branche de la hiérarchie, principalement une source de données. "
+        "Les sous-segments de même couleur appartiennent à la même source. "
+        "La taille de chaque segment est proportionnelle au nombre de trajets chargés dans la base."
+    )
+    explanation_block(
+    "Le bleu correspond à SNCF GTFS, l'orange à Back-on-Track Night Train Data et le vert à European Sleeper Timetable. "
+    "Le centre du diagramme représente les sources de données, tandis que l'anneau extérieur indique le type de train associé : day ou night. "
+    "La taille de chaque segment est proportionnelle au nombre de trajets chargés dans PostgreSQL."
     )
 
-    quality_stats_df = load_quality_stats()
-    table_block(quality_stats_df)
 
-    quality_source_df = load_quality_by_source()
-    quality_source_type_df = load_quality_by_source_and_type()
-
-    fig_radar = create_radar_chart(quality_source_df, height=740)
-    chart_block(fig_radar)
-
-    fig_quality_heatmap = create_quality_heatmap(quality_source_type_df, height=580)
-    chart_block(fig_quality_heatmap)
-
-    st.subheader("Détail des anomalies")
-
-    anomalies_df = load_anomalies(
-        selected_train_type=selected_train_type,
-        selected_source_id=selected_source_id,
-        limit=anomaly_limit
-    )
-
-    if anomalies_df.empty:
-        st.success("Aucune anomalie trouvée avec les filtres sélectionnés.")
-    else:
-        table_block(anomalies_df)
-        st.download_button(
-            label="Télécharger les anomalies",
-            data=anomalies_df.to_csv(index=False).encode("utf-8"),
-            file_name="quality_anomalies.csv",
-            mime="text/csv"
-        )
 
 
 # ============================================================
-# 4. Réseau ferroviaire
+# 3. Réseau ferroviaire
 # ============================================================
 
 with tab_network:
@@ -409,6 +408,13 @@ with tab_network:
     network_df = load_route_network(limit=25)
     fig_network = create_network_graph(network_df, height=780)
     chart_block(fig_network)
+
+    explanation_block(
+        "Ce graphe représente les principales connexions ferroviaires entre villes. "
+        "Chaque nœud correspond à une ville et chaque lien représente une relation de trajet entre deux villes. "
+        "Les connexions affichées sont limitées aux trajets les plus fréquents afin de garder une visualisation lisible. "
+        "Ce graphique permet d'identifier rapidement les villes les plus connectées dans le réseau chargé."
+    )
 
     st.subheader("Exploration des trajets")
 
@@ -440,6 +446,14 @@ with tab_network:
         st.warning("Aucun trajet trouvé avec les filtres sélectionnés.")
     else:
         table_block(trips_df)
+
+        explanation_block(
+            "Ce tableau permet d'explorer les trajets ferroviaires présents dans la base. "
+            "Les filtres de la barre latérale peuvent être utilisés pour limiter l'affichage "
+            "par type de train ou par source de données. Les champs de recherche permettent aussi "
+            "de filtrer les trajets selon la ville de départ ou la ville d'arrivée."
+        )
+
         st.download_button(
             label="Télécharger les trajets",
             data=trips_df.to_csv(index=False).encode("utf-8"),

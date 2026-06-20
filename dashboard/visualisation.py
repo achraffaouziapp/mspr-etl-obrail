@@ -562,28 +562,44 @@ def create_train_type_share_chart(df: pd.DataFrame, height: int = 560):
     fig.update_yaxes(showgrid=False)
     return apply_pro_layout(fig, height=height)
 
-
 def create_sunburst_chart(df: pd.DataFrame, height: int = 680):
     df = prepare_numeric_column(df, "total_trips")
+
+    source_colors = {
+        "SNCF GTFS": "#2563EB",
+        "Back-on-Track Night Train Data": "#F97316",
+        "European Sleeper Timetable": "#10B981",
+    }
+
     fig = px.sunburst(
         df,
         path=["source_name", "type_name"],
         values="total_trips",
+        color="source_name",
+        color_discrete_map=source_colors,
         title="Répartition hiérarchique : Source → Type de train"
     )
-    return apply_pro_layout(fig, height=height)
 
-
-def create_heatmap_counts(df: pd.DataFrame, height: int = 560):
-    pivot_df = df.pivot(index="source_name", columns="type_name", values="total_trips").fillna(0)
-    fig = px.imshow(
-        pivot_df,
-        text_auto=True,
-        aspect="auto",
-        title="Heatmap du volume de trajets : Source × Type de train",
-        labels=dict(x="Type de train", y="Source", color="Trajets")
+    fig.update_layout(
+        showlegend=True,
+        legend=dict(
+            title="Source de données",
+            orientation="v",
+            yanchor="middle",
+            y=0.5,
+            xanchor="left",
+            x=1.02,
+            bgcolor="rgba(255,255,255,0.9)",
+            bordercolor="#E5E7EB",
+            borderwidth=1
+        ),
+        margin=dict(l=40, r=260, t=85, b=55)
     )
+
     return apply_pro_layout(fig, height=height)
+
+
+
 
 
 def create_quality_heatmap(df: pd.DataFrame, height: int = 560):
