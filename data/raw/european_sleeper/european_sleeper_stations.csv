@@ -1,0 +1,20 @@
+station_code,station_name,city_name,country_name,country_code,latitude,longitude,timezone
+ES_BRUXELLES_MIDI,Bruxelles-Midi,Brussels,Belgium,BE,50.8359,4.3365,Europe/Brussels
+ES_ANTWERPEN_CENTRAAL,Antwerpen-Centraal,Antwerp,Belgium,BE,51.2172,4.4211,Europe/Brussels
+ES_ROOSENDAAL,Roosendaal,Roosendaal,Netherlands,NL,51.5406,4.458,Europe/Amsterdam
+ES_ROTTERDAM_CENTRAAL,Rotterdam Centraal,Rotterdam,Netherlands,NL,51.9244,4.4697,Europe/Amsterdam
+ES_DEN_HAAG_HS,Den Haag HS,The Hague,Netherlands,NL,52.0699,4.3229,Europe/Amsterdam
+ES_AMSTERDAM_CENTRAAL,Amsterdam Centraal,Amsterdam,Netherlands,NL,52.3791,4.9003,Europe/Amsterdam
+ES_UTRECHT_CENTRAAL,Utrecht Centraal,Utrecht,Netherlands,NL,52.0894,5.1103,Europe/Amsterdam
+ES_ARNHEM_CENTRAAL,Arnhem Centraal,Arnhem,Netherlands,NL,51.9851,5.8987,Europe/Amsterdam
+ES_BERLIN_GESUNDBRUNNEN,Berlin Gesundbrunnen,Berlin,Germany,DE,52.5486,13.3893,Europe/Berlin
+ES_BERLIN_SPANDAU,Berlin-Spandau,Berlin,Germany,DE,52.5349,13.1974,Europe/Berlin
+ES_DRESDEN_HBF,Dresden Hbf,Dresden,Germany,DE,51.0409,13.7326,Europe/Berlin
+ES_BAD_SCHANDAU,Bad Schandau,Bad Schandau,Germany,DE,50.9189,14.1394,Europe/Berlin
+ES_DECIN_HLN,Decin hl.n.,Decin,Czechia,CZ,50.773,14.201,Europe/Prague
+ES_USTI_NAD_LABEM_HLN,Usti nad Labem hl.n.,Usti nad Labem,Czechia,CZ,50.6605,14.043,Europe/Prague
+ES_PRAGUE_HLN,Prague hl.n. (main station),Prague,Czechia,CZ,50.083,14.435,Europe/Prague
+ES_LIEGE_GUILLEMINS,Liège-Guillemins,Liège,Belgium,BE,50.6242,5.5668,Europe/Brussels
+ES_MONS,Mons,Mons,Belgium,BE,50.4542,3.942,Europe/Brussels
+ES_AULNOYE_AYMERIES,Aulnoye-Aymeries,Aulnoye-Aymeries,France,FR,50.201,3.838,Europe/Paris
+ES_PARIS_NORD,Paris Nord,Paris,France,FR,48.8809,2.3553,Europe/Paris

@@ -1,7 +1,9 @@
 from pathlib import Path
-from datetime import datetime, date
+from datetime import datetime, date, timedelta, timezone
 import json
 import re
+import reverse_geocoder as rg
+import pycountry
 
 import pandas as pd
 
@@ -17,6 +19,7 @@ BACK_ON_TRACK_DIR = RAW_DIR / "back_on_track"
 SNCF_GTFS_DIR = RAW_DIR / "sncf_gtfs"
 GARES_DIR = RAW_DIR / "gares_voyageurs"
 WIKI_DIR = RAW_DIR / "wikipedia_busiest_stations_europe"
+EUROPEAN_SLEEPER_DIR = RAW_DIR / "european_sleeper"
 
 
 # ============================================================
@@ -99,6 +102,45 @@ def convert_nullable_integer_columns(df: pd.DataFrame, columns: list[str]) -> pd
 
     return df
 
+
+def force_integer_csv_columns(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
+    """
+    Force certaines colonnes à être exportées comme entiers propres dans le CSV.
+
+    Exemple :
+    0.0 -> 0
+    1.0 -> 1
+    NaN -> vide
+
+    Cette fonction évite les erreurs PostgreSQL du type :
+    invalid input syntax for type integer: "0.0"
+    """
+    df = df.copy()
+
+    for column in columns:
+        if column in df.columns:
+            df[column] = pd.to_numeric(df[column], errors="coerce")
+            df[column] = df[column].apply(
+                lambda value: "" if pd.isna(value) else str(int(value))
+            )
+
+    return df
+
+
+def next_id(df: pd.DataFrame, id_column: str) -> int:
+    """
+    Retourne le prochain identifiant entier disponible dans un DataFrame.
+    """
+    if df.empty or id_column not in df.columns:
+        return 1
+
+    values = pd.to_numeric(df[id_column], errors="coerce")
+
+    if values.dropna().empty:
+        return 1
+
+    return int(values.max()) + 1
+
 def read_csv_auto(path: Path) -> pd.DataFrame:
     """
     Lit un CSV avec détection automatique du séparateur.
@@ -168,6 +210,7 @@ def read_json_auto(path: Path) -> pd.DataFrame:
         return normalize_columns(pd.DataFrame([data]))
 
     return pd.DataFrame()
+
 
 
 
@@ -253,6 +296,95 @@ def gtfs_time_to_sql_time_and_offset(value):
 def build_key(*values):
     cleaned = [str(v).strip().lower() for v in values if v is not None and str(v).strip() != ""]
     return "|".join(cleaned)
+
+
+def country_name_from_code(country_code):
+    """
+    Convertit un code pays ISO en nom de pays.
+    Exemple : FR -> France
+    """
+    country_code = clean_string(country_code)
+
+    if country_code is None:
+        return None
+
+    try:
+        country = pycountry.countries.get(alpha_2=country_code.upper())
+        if country:
+            return country.name
+    except Exception:
+        return None
+
+    return None
+
+
+def infer_location_from_coordinates(df):
+    """
+    Déduit city_name, country_name et country_code à partir de latitude/longitude.
+
+    Cette fonction utilise reverse_geocoder en local.
+    Elle ne dépend pas d'une API externe.
+    """
+    df = df.copy()
+
+    required_columns = ["latitude", "longitude", "country_name", "country_code", "city_name"]
+
+    for column in required_columns:
+        if column not in df.columns:
+            return df
+
+    mask = (
+        (
+            df["country_name"].isna()
+            | (df["country_name"].astype(str).str.strip() == "")
+            | (df["country_name"].astype(str).str.lower() == "unknown")
+        )
+        & df["latitude"].notna()
+        & df["longitude"].notna()
+    )
+
+    if mask.sum() == 0:
+        return df
+
+    print(f"Inférence géographique depuis latitude/longitude : {mask.sum()} gares à traiter")
+
+    coordinates = list(
+        zip(
+            df.loc[mask, "latitude"].astype(float),
+            df.loc[mask, "longitude"].astype(float)
+        )
+    )
+
+    results = rg.search(coordinates, mode=1)
+
+    indexes = df.loc[mask].index.tolist()
+
+    for index, result in zip(indexes, results):
+        country_code = result.get("cc")
+        city_name = result.get("name")
+        country_name = country_name_from_code(country_code)
+
+        if country_code:
+            df.at[index, "country_code"] = country_code.upper()
+
+        if country_name:
+            df.at[index, "country_name"] = country_name
+
+        current_city = clean_string(df.at[index, "city_name"])
+        station_name = clean_string(df.at[index, "station_name"]) if "station_name" in df.columns else None
+
+        if (
+            city_name
+            and (
+                current_city is None
+                or current_city == ""
+                or current_city.lower() == "unknown"
+                or current_city == station_name
+            )
+        ):
+            df.at[index, "city_name"] = city_name
+
+    return df
 
 # ============================================================
 # Correction des codes pays
@@ -340,6 +472,12 @@ def load_raw_sources():
     # Source 4 : Wikipedia scraping
     raw["wiki"] = read_csv_auto(WIKI_DIR / "busiest_railway_stations_europe.csv")
 
+    # Source 5 : European Sleeper
+    raw["es_stations"] = read_csv_auto(EUROPEAN_SLEEPER_DIR / "european_sleeper_stations.csv")
+    raw["es_routes"] = read_csv_auto(EUROPEAN_SLEEPER_DIR / "european_sleeper_routes.csv")
+    raw["es_stop_times"] = read_csv_auto(EUROPEAN_SLEEPER_DIR / "european_sleeper_stop_times.csv")
+    raw["es_metadata"] = read_json_auto(EUROPEAN_SLEEPER_DIR / "metadata.json")
+
     for name, df in raw.items():
         print(f"- {name}: {len(df)} lignes, {len(df.columns)} colonnes")
 
@@ -390,6 +528,16 @@ def transform_data_source():
             "extraction_date": date.today().isoformat(),
             "licence": None,
             "raw_file_name": "busiest_railway_stations_europe.csv",
+            "import_status": "success"
+        },
+        {
+            "data_source_id": 5,
+            "source_name": "European Sleeper Timetable",
+            "source_url": "https://www.europeansleeper.eu/timetable",
+            "source_format": "HTML + structured CSV",
+            "extraction_date": datetime.now(timezone.utc).isoformat(),
+            "licence": "Public timetable page",
+            "raw_file_name": "european_sleeper_stations.csv; european_sleeper_routes.csv; european_sleeper_stop_times.csv",
             "import_status": "success"
         }
     ]
@@ -662,10 +810,28 @@ def transform_geo_and_stations(raw):
     all_stations_raw["country_name"] = all_stations_raw["country_name"].apply(clean_string)
     all_stations_raw["country_code"] = all_stations_raw["country_code"].apply(clean_string)
 
-    all_stations_raw["city_name"] = all_stations_raw["city_name"].fillna(all_stations_raw["station_name"])
+    all_stations_raw["city_name"] = all_stations_raw["city_name"].fillna("")
     all_stations_raw["country_name"] = all_stations_raw["country_name"].fillna("Unknown")
     all_stations_raw["country_code"] = all_stations_raw["country_code"].fillna("UNK")
 
+    all_stations_raw = infer_location_from_coordinates(all_stations_raw)
+
+    all_stations_raw["city_name"] = all_stations_raw["city_name"].fillna("")
+    all_stations_raw["city_name"] = all_stations_raw.apply(
+        lambda row: row["station_name"]
+        if clean_string(row["city_name"]) in [None, "", "Unknown"]
+        else row["city_name"],
+        axis=1
+    )
+
+    all_stations_raw["country_name"] = all_stations_raw["country_name"].fillna("Unknown")
+    all_stations_raw["country_code"] = all_stations_raw["country_code"].fillna("UNK")
+
+    all_stations_raw["country_code"] = all_stations_raw.apply(
+        lambda row: fix_country_code(row["country_name"], row["country_code"]),
+        axis=1
+    )
+    
     # Correction des codes pays manquants à partir du nom du pays
     all_stations_raw["country_code"] = all_stations_raw.apply(
         lambda row: fix_country_code(row["country_name"], row["country_code"]),
@@ -1480,6 +1646,432 @@ def transform_back_on_track_trips(
     return routes_final, trips_final, trip_stops_final
 
 
+
+# ============================================================
+# EUROPEAN SLEEPER
+# ============================================================
+
+EUROPEAN_SLEEPER_SERVICE_START_DATE = date(2026, 6, 19)
+EUROPEAN_SLEEPER_SERVICE_END_DATE = date(2026, 12, 31)
+
+EUROPEAN_SLEEPER_DAY_NAME_TO_WEEKDAY = {
+    "mon": 0,
+    "tue": 1,
+    "wed": 2,
+    "thu": 3,
+    "fri": 4,
+    "sat": 5,
+    "sun": 6,
+}
+
+
+def es_to_int(value):
+    """
+    Convertit une valeur numérique en entier.
+    """
+    if pd.isna(value) or str(value).strip() == "":
+        return None
+
+    return int(float(value))
+
+
+def es_time_to_minutes(time_value, day_offset=0):
+    """
+    Convertit une heure HH:MM:SS + offset de jour en minutes.
+    """
+    if pd.isna(time_value) or str(time_value).strip() == "":
+        return None
+
+    parts = str(time_value).split(":")
+    hours = int(parts[0])
+    minutes = int(parts[1])
+
+    return int(day_offset or 0) * 1440 + hours * 60 + minutes
+
+
+def generate_european_sleeper_service_dates(operating_days: str):
+    """
+    Génère les dates de service European Sleeper entre deux dates fixes.
+    """
+    allowed_weekdays = {
+        EUROPEAN_SLEEPER_DAY_NAME_TO_WEEKDAY[item.strip()]
+        for item in str(operating_days).split(",")
+        if item.strip() in EUROPEAN_SLEEPER_DAY_NAME_TO_WEEKDAY
+    }
+
+    current_date = EUROPEAN_SLEEPER_SERVICE_START_DATE
+
+    while current_date <= EUROPEAN_SLEEPER_SERVICE_END_DATE:
+        if current_date.weekday() in allowed_weekdays:
+            yield current_date
+
+        current_date += timedelta(days=1)
+
+
+def get_or_add_country_in_memory(country_df, country_name, country_code):
+    country_name = clean_string(country_name) or "Unknown"
+    country_code = (clean_string(country_code) or "UNK").upper()
+
+    match = country_df[
+        (country_df["country_name"].astype(str).str.lower() == country_name.lower())
+        & (country_df["country_code"].astype(str).str.upper() == country_code)
+    ]
+
+    if not match.empty:
+        return int(match.iloc[0]["country_id"]), country_df
+
+    new_id = next_id(country_df, "country_id")
+
+    country_df = pd.concat([
+        country_df,
+        pd.DataFrame([{
+            "country_id": new_id,
+            "country_name": country_name,
+            "country_code": country_code,
+        }])
+    ], ignore_index=True)
+
+    return new_id, country_df
+
+
+def get_or_add_city_in_memory(city_df, city_name, country_id):
+    city_name = clean_string(city_name) or "Unknown"
+
+    match = city_df[
+        (city_df["city_name"].astype(str).str.lower() == city_name.lower())
+        & (pd.to_numeric(city_df["country_id"], errors="coerce") == int(country_id))
+    ]
+
+    if not match.empty:
+        return int(match.iloc[0]["city_id"]), city_df
+
+    new_id = next_id(city_df, "city_id")
+
+    city_df = pd.concat([
+        city_df,
+        pd.DataFrame([{
+            "city_id": new_id,
+            "city_name": city_name,
+            "country_id": country_id,
+        }])
+    ], ignore_index=True)
+
+    return new_id, city_df
+
+
+def get_or_add_station_in_memory(station_df, station_row, city_id):
+    station_code = clean_string(station_row.get("station_code"))
+    station_name = clean_string(station_row.get("station_name"))
+
+    if station_code:
+        match_by_code = station_df[
+            station_df["station_code"].fillna("").astype(str).str.upper() == station_code.upper()
+        ]
+
+        if not match_by_code.empty:
+            return int(match_by_code.iloc[0]["station_id"]), station_df
+
+    match_by_name_city = station_df[
+        (station_df["station_name"].astype(str).str.lower() == str(station_name).lower())
+        & (pd.to_numeric(station_df["city_id"], errors="coerce") == int(city_id))
+    ]
+
+    if not match_by_name_city.empty:
+        return int(match_by_name_city.iloc[0]["station_id"]), station_df
+
+    new_id = next_id(station_df, "station_id")
+
+    new_row = {
+        "station_id": new_id,
+        "station_name": station_name,
+        "station_code": station_code,
+        "latitude": station_row.get("latitude", None),
+        "longitude": station_row.get("longitude", None),
+        "timezone": station_row.get("timezone", None),
+        "city_id": city_id,
+    }
+
+    station_df = pd.concat(
+        [station_df, pd.DataFrame([new_row])],
+        ignore_index=True
+    )
+
+    return new_id, station_df
+
+
+def get_or_add_european_sleeper_operator(operator_df, country_df):
+    operator_name = "European Sleeper"
+    operator_code = "ES"
+
+    country_id, country_df = get_or_add_country_in_memory(
+        country_df,
+        "Netherlands",
+        "NL"
+    )
+
+    match = operator_df[
+        operator_df["operator_name"].astype(str).str.lower() == operator_name.lower()
+    ]
+
+    if not match.empty:
+        return int(match.iloc[0]["operator_id"]), operator_df, country_df
+
+    new_id = next_id(operator_df, "operator_id")
+
+    operator_df = pd.concat([
+        operator_df,
+        pd.DataFrame([{
+            "operator_id": new_id,
+            "operator_name": operator_name,
+            "operator_code": operator_code,
+            "country_id": country_id,
+        }])
+    ], ignore_index=True)
+
+    return new_id, operator_df, country_df
+
+
+def get_or_add_european_sleeper_route(route_df, departure_station_id, arrival_station_id, operator_id):
+    numeric_route = route_df.copy()
+    numeric_route["departure_station_id"] = pd.to_numeric(
+        numeric_route["departure_station_id"],
+        errors="coerce"
+    )
+    numeric_route["arrival_station_id"] = pd.to_numeric(
+        numeric_route["arrival_station_id"],
+        errors="coerce"
+    )
+    numeric_route["operator_id"] = pd.to_numeric(
+        numeric_route["operator_id"],
+        errors="coerce"
+    )
+
+    match = numeric_route[
+        (numeric_route["departure_station_id"] == int(departure_station_id))
+        & (numeric_route["arrival_station_id"] == int(arrival_station_id))
+        & (numeric_route["operator_id"] == int(operator_id))
+    ]
+
+    if not match.empty:
+        return int(match.iloc[0]["route_id"]), route_df
+
+    new_id = next_id(route_df, "route_id")
+
+    route_df = pd.concat([
+        route_df,
+        pd.DataFrame([{
+            "route_id": new_id,
+            "departure_station_id": departure_station_id,
+            "arrival_station_id": arrival_station_id,
+            "operator_id": operator_id,
+            "distance_km": None,
+        }])
+    ], ignore_index=True)
+
+    return new_id, route_df
+
+
+def transform_european_sleeper(
+    raw,
+    country,
+    city,
+    station,
+    operator,
+    data_source,
+    route,
+    trip,
+    trip_stop
+):
+    """
+    Ajoute European Sleeper directement dans la transformation globale.
+
+    Cette fonction remplace l'ancien script séparé :
+    scripts/transformation/add_european_sleeper_to_processed.py
+    """
+    print("\nTransformation European Sleeper night...")
+
+    es_stations = raw.get("es_stations", pd.DataFrame())
+    es_routes = raw.get("es_routes", pd.DataFrame())
+    es_stop_times = raw.get("es_stop_times", pd.DataFrame())
+
+    if es_stations.empty or es_routes.empty or es_stop_times.empty:
+        print("[INFO] Données European Sleeper absentes. Source ignorée.")
+        return country, city, station, operator, data_source, route, trip, trip_stop
+
+    # Vérification / récupération de l'identifiant data_source
+    source_name = "European Sleeper Timetable"
+    source_match = data_source[
+        data_source["source_name"].astype(str).str.lower() == source_name.lower()
+    ]
+
+    if source_match.empty:
+        data_source_id = next_id(data_source, "data_source_id")
+        data_source = pd.concat([
+            data_source,
+            pd.DataFrame([{
+                "data_source_id": data_source_id,
+                "source_name": source_name,
+                "source_url": "https://www.europeansleeper.eu/timetable",
+                "source_format": "HTML + structured CSV",
+                "extraction_date": datetime.now(timezone.utc).isoformat(),
+                "licence": "Public timetable page",
+                "raw_file_name": "european_sleeper_stations.csv; european_sleeper_routes.csv; european_sleeper_stop_times.csv",
+                "import_status": "success",
+            }])
+        ], ignore_index=True)
+    else:
+        data_source_id = int(source_match.iloc[0]["data_source_id"])
+
+    # train_type night
+    train_type_id = 1
+
+    # Ajout des dimensions pays / villes / gares
+    european_station_code_to_id = {}
+
+    for _, station_row in es_stations.iterrows():
+        country_id, country = get_or_add_country_in_memory(
+            country,
+            station_row.get("country_name"),
+            station_row.get("country_code")
+        )
+
+        city_id, city = get_or_add_city_in_memory(
+            city,
+            station_row.get("city_name"),
+            country_id
+        )
+
+        station_id, station = get_or_add_station_in_memory(
+            station,
+            station_row,
+            city_id
+        )
+
+        station_code = clean_string(station_row.get("station_code"))
+        european_station_code_to_id[station_code] = station_id
+
+    # Ajout de l'opérateur
+    operator_id, operator, country = get_or_add_european_sleeper_operator(
+        operator,
+        country
+    )
+
+    existing_trip_codes = set(trip["trip_code"].astype(str).tolist()) if "trip_code" in trip.columns else set()
+
+    next_trip_id = next_id(trip, "trip_id")
+    next_trip_stop_id = next_id(trip_stop, "trip_stop_id")
+
+    new_trip_rows = []
+    new_trip_stop_rows = []
+
+    for _, route_row in es_routes.iterrows():
+        train_code = clean_string(route_row.get("train_code"))
+
+        origin_station_code = clean_string(route_row.get("origin_station_code"))
+        destination_station_code = clean_string(route_row.get("destination_station_code"))
+
+        if origin_station_code not in european_station_code_to_id:
+            print(f"[ATTENTION] Gare origine European Sleeper introuvable : {origin_station_code}")
+            continue
+
+        if destination_station_code not in european_station_code_to_id:
+            print(f"[ATTENTION] Gare destination European Sleeper introuvable : {destination_station_code}")
+            continue
+
+        departure_station_id = european_station_code_to_id[origin_station_code]
+        arrival_station_id = european_station_code_to_id[destination_station_code]
+
+        route_id, route = get_or_add_european_sleeper_route(
+            route,
+            departure_station_id,
+            arrival_station_id,
+            operator_id
+        )
+
+        pattern_stops = es_stop_times[
+            es_stop_times["train_code"].astype(str) == train_code
+        ].sort_values("stop_order")
+
+        if pattern_stops.empty:
+            print(f"[ATTENTION] Aucun arrêt trouvé pour {train_code}")
+            continue
+
+        first_stop = pattern_stops.iloc[0]
+        last_stop = pattern_stops.iloc[-1]
+
+        departure_time = clean_string(first_stop.get("departure_time"))
+        departure_day_offset = es_to_int(first_stop.get("departure_day_offset")) or 0
+
+        arrival_time = clean_string(last_stop.get("arrival_time"))
+        arrival_day_offset = es_to_int(last_stop.get("arrival_day_offset")) or 0
+
+        departure_minutes = es_time_to_minutes(departure_time, departure_day_offset)
+        arrival_minutes = es_time_to_minutes(arrival_time, arrival_day_offset)
+
+        duration_minutes = None
+        if departure_minutes is not None and arrival_minutes is not None:
+            duration_minutes = arrival_minutes - departure_minutes
+
+        operating_days = clean_string(route_row.get("operating_days")) or ""
+
+        for service_date in generate_european_sleeper_service_dates(operating_days):
+            trip_code = (
+                f"EUROPEAN_SLEEPER_"
+                f"{str(train_code).replace(' ', '')}_"
+                f"{service_date.strftime('%Y%m%d')}"
+            )
+
+            if trip_code in existing_trip_codes:
+                continue
+
+            trip_id = next_trip_id
+            next_trip_id += 1
+            existing_trip_codes.add(trip_code)
+
+            new_trip_rows.append({
+                "trip_id": trip_id,
+                "route_id": route_id,
+                "train_type_id": train_type_id,
+                "data_source_id": data_source_id,
+                "trip_code": trip_code,
+                "service_date": service_date.isoformat(),
+                "departure_time": departure_time,
+                "arrival_time": arrival_time,
+                "departure_day_offset": departure_day_offset,
+                "arrival_day_offset": arrival_day_offset,
+                "duration_minutes": duration_minutes,
+                "co2_estimated_kg": None,
+            })
+
+            for _, stop_row in pattern_stops.iterrows():
+                station_code = clean_string(stop_row.get("station_code"))
+
+                if station_code not in european_station_code_to_id:
+                    continue
+
+                new_trip_stop_rows.append({
+                    "trip_stop_id": next_trip_stop_id,
+                    "trip_id": trip_id,
+                    "station_id": european_station_code_to_id[station_code],
+                    "stop_order": int(float(stop_row.get("stop_order"))),
+                    "arrival_time": clean_string(stop_row.get("arrival_time")),
+                    "departure_time": clean_string(stop_row.get("departure_time")),
+                    "arrival_day_offset": es_to_int(stop_row.get("arrival_day_offset")),
+                    "departure_day_offset": es_to_int(stop_row.get("departure_day_offset")),
+                })
+
+                next_trip_stop_id += 1
+
+    if new_trip_rows:
+        trip = pd.concat([trip, pd.DataFrame(new_trip_rows)], ignore_index=True)
+        trip_stop = pd.concat([trip_stop, pd.DataFrame(new_trip_stop_rows)], ignore_index=True)
+
+    print(f"[OK] European Sleeper trips night : {len(new_trip_rows)}")
+    print(f"[OK] European Sleeper trip_stops night : {len(new_trip_stop_rows)}")
+
+    return country, city, station, operator, data_source, route, trip, trip_stop
+
+
 # ============================================================
 # QUALITY_CHECK
 # ============================================================
@@ -1603,44 +2195,99 @@ def main():
         trip_stop_start_id=next_trip_stop_id
     )
 
-    # Fusion day + night
+    # Fusion SNCF day + Back-on-Track night
     route = pd.concat([sncf_route, bot_route], ignore_index=True)
     trip = pd.concat([sncf_trip, bot_trip], ignore_index=True)
     trip_stop = pd.concat([sncf_trip_stop, bot_trip_stop], ignore_index=True)
 
+    # Ajout European Sleeper directement dans la transformation globale
+    country, city, station, operator, data_source, route, trip, trip_stop = transform_european_sleeper(
+        raw=raw,
+        country=country,
+        city=city,
+        station=station,
+        operator=operator,
+        data_source=data_source,
+        route=route,
+        trip=trip,
+        trip_stop=trip_stop
+    )
+
+    # Contrôle qualité après fusion complète de toutes les sources
     quality_check = transform_quality_check(trip)
 
-        # Correction des colonnes entières nullable avant export CSV
-    trip = convert_nullable_integer_columns(
-        trip,
-        [
-            "departure_day_offset",
-            "arrival_day_offset"
-        ]
+    # Correction des colonnes entières avant export CSV
+    # Empêche PostgreSQL de recevoir des valeurs comme 0.0 dans les colonnes INTEGER.
+    country = force_integer_csv_columns(
+        country,
+        ["country_id"]
     )
 
-    trip_stop = convert_nullable_integer_columns(
-        trip_stop,
-        [
-            "stop_order",
-            "arrival_day_offset",
-            "departure_day_offset"
-        ]
+    city = force_integer_csv_columns(
+        city,
+        ["city_id", "country_id"]
     )
 
-    route = convert_nullable_integer_columns(
+    station = force_integer_csv_columns(
+        station,
+        ["station_id", "city_id"]
+    )
+
+    operator = force_integer_csv_columns(
+        operator,
+        ["operator_id", "country_id"]
+    )
+
+    train_type = force_integer_csv_columns(
+        train_type,
+        ["train_type_id"]
+    )
+
+    data_source = force_integer_csv_columns(
+        data_source,
+        ["data_source_id"]
+    )
+
+    route = force_integer_csv_columns(
         route,
         [
+            "route_id",
             "departure_station_id",
             "arrival_station_id",
-            "operator_id"
+            "operator_id",
         ]
     )
 
-    quality_check = convert_nullable_integer_columns(
+    trip = force_integer_csv_columns(
+        trip,
+        [
+            "trip_id",
+            "route_id",
+            "train_type_id",
+            "data_source_id",
+            "departure_day_offset",
+            "arrival_day_offset",
+        ]
+    )
+
+    trip_stop = force_integer_csv_columns(
+        trip_stop,
+        [
+            "trip_stop_id",
+            "trip_id",
+            "station_id",
+            "stop_order",
+            "arrival_day_offset",
+            "departure_day_offset",
+        ]
+    )
+
+    quality_check = force_integer_csv_columns(
         quality_check,
         [
-            "quality_score"
+            "quality_check_id",
+            "trip_id",
+            "quality_score",
         ]
     )
 

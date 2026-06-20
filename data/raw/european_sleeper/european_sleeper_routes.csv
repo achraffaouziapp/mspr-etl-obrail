@@ -1,0 +1,5 @@
+train_code,route_name,direction,operator_name,operator_code,operator_country_name,operator_country_code,origin_station_code,destination_station_code,operating_days
+ES 453,Brussels - Prague,Bruxelles-Midi -> Prague hl.n.,European Sleeper,ES,Netherlands,NL,ES_BRUXELLES_MIDI,ES_PRAGUE_HLN,"mon,wed,fri"
+ES 452,Prague - Brussels,Prague hl.n. -> Bruxelles-Midi,European Sleeper,ES,Netherlands,NL,ES_PRAGUE_HLN,ES_BRUXELLES_MIDI,"tue,thu,sun"
+ES 474,Berlin - Paris,Berlin-Spandau -> Paris Nord,European Sleeper,ES,Netherlands,NL,ES_BERLIN_SPANDAU,ES_PARIS_NORD,"mon,wed,fri"
+ES 475,Paris - Berlin,Paris Nord -> Berlin-Spandau,European Sleeper,ES,Netherlands,NL,ES_PARIS_NORD,ES_BERLIN_SPANDAU,"tue,thu,sun"

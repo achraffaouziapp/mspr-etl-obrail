@@ -1,17 +1,47 @@
 country_id,country_name,country_code
-1,Austria,AT
-2,Belgium,BE
-3,Czechia,CZ
-4,Denmark,DK
-5,Finland,FI
-6,France,FR
-7,Germany,DE
-8,Italy,IT
-9,Netherlands,NL
-10,Norway,NO
-11,Russia,RU
-12,Spain,ES
-13,Sweden,SE
-14,Switzerland,CH
-15,United Kingdom,GB
-16,Unknown,UNK
+1,Albania,AL
+2,Andorra,AD
+3,Austria,AT
+4,Belarus,BY
+5,Belgium,BE
+6,Bosnia and Herzegovina,BA
+7,Bulgaria,BG
+8,Croatia,HR
+9,Czechia,CZ
+10,Denmark,DK
+11,Estonia,EE
+12,Finland,FI
+13,France,FR
+14,Germany,DE
+15,Greece,GR
+16,Holy See (Vatican City State),VA
+17,Hungary,HU
+18,Italy,IT
+19,Latvia,LV
+20,Liechtenstein,LI
+21,Lithuania,LT
+22,Luxembourg,LU
+23,Mexico,MX
+24,"Moldova, Republic of",MD
+25,Monaco,MC
+26,Montenegro,ME
+27,Netherlands,NL
+28,North Macedonia,MK
+29,Norway,NO
+30,Poland,PL
+31,Portugal,PT
+32,Romania,RO
+33,Russia,RU
+34,Russian Federation,RU
+35,Serbia,RS
+36,Slovakia,SK
+37,Slovenia,SI
+38,Spain,ES
+39,Sweden,SE
+40,Switzerland,CH
+41,Türkiye,TR
+42,Ukraine,UA
+43,United Kingdom,GB
+44,United States,US
+45,Unknown,UNK
+46,Unknown,XK

@@ -1,38 +1,39 @@
 operator_id,operator_name,operator_code,country_id
-1,Astra Trans Carpatic SRL,ATC,16
-2,БДЖ - Пътнически превози ЕООД,BDŽ,16
-3,České dráhy a.s.,ČD,16
-4,Calea Ferată din Moldova,CFM,16
-5,C.F.R. Călători S.A.,CFR,16
-6,Caledonian Sleeper Ltd.,CS,16
-7,European Sleeper Cooperatïe,ES,16
-8,Trenitalia S.p.A,FS,16
-9,Go-Ahead Norge AS,GA,16
-10,First Greater Western Ltd.,GWR,16
-11,HŽ Putnički prijevoz d.o.o.,HŽPP,16
-12,MÁV-START Vasúti Személyszállító Zrt.,MÁV,16
-13,00H00 SAS,MT,16
-14,ÖBB-Personenverkehr AG,ÖBB,16
-15,Optima Tours,OTE,16
-16,PKP Intercity S.A.,PKP,16
-17,RDC Deutschland,RDC,16
-18,RegioJet a.s.,RJ,16
-19,SJ AB,SJ,16
-20,SJ Norge AS,SJN,16
-21,SNCF Voyageurs SA,SNCF,16
-22,Merresor AB,ST,16
-23,TCDD Taşımacılık A.Ş.,TCDD,16
-24,Train4you Vertriebs GmbH,UEX,16
-25,Укрзалізниця,UZ,16
-26,VR-Yhtymä Oy,VR,16
-27,Vygruppen AS,VY,16
-28,Željeznički prevoz Crne Gore AD,ŽPCG,16
-29,Железнице Србије ад,ŽS,16
-30,Železničná spoločnosť Slovensko a.s.,ZSSK,16
-31,SNCF VOYAGEURS,1187,6
-32,SNCF Voyageurs SA,5111,6
-33,SNCF Voyageurs EA,5235,6
-34,SNCF Voyageurs LO,5270,6
-35,TMR SA,5429,6
-36,OCEdefault,OCEdefault,6
-37,Unknown operator,UNKNOWN,16
+1,Astra Trans Carpatic SRL,ATC,45
+2,БДЖ - Пътнически превози ЕООД,BDŽ,45
+3,České dráhy a.s.,ČD,45
+4,Calea Ferată din Moldova,CFM,45
+5,C.F.R. Călători S.A.,CFR,45
+6,Caledonian Sleeper Ltd.,CS,45
+7,European Sleeper Cooperatïe,ES,45
+8,Trenitalia S.p.A,FS,45
+9,Go-Ahead Norge AS,GA,45
+10,First Greater Western Ltd.,GWR,45
+11,HŽ Putnički prijevoz d.o.o.,HŽPP,45
+12,MÁV-START Vasúti Személyszállító Zrt.,MÁV,45
+13,00H00 SAS,MT,45
+14,ÖBB-Personenverkehr AG,ÖBB,45
+15,Optima Tours,OTE,45
+16,PKP Intercity S.A.,PKP,45
+17,RDC Deutschland,RDC,45
+18,RegioJet a.s.,RJ,45
+19,SJ AB,SJ,45
+20,SJ Norge AS,SJN,45
+21,SNCF Voyageurs SA,SNCF,45
+22,Merresor AB,ST,45
+23,TCDD Taşımacılık A.Ş.,TCDD,45
+24,Train4you Vertriebs GmbH,UEX,45
+25,Укрзалізниця,UZ,45
+26,VR-Yhtymä Oy,VR,45
+27,Vygruppen AS,VY,45
+28,Željeznički prevoz Crne Gore AD,ŽPCG,45
+29,Железнице Србије ад,ŽS,45
+30,Železničná spoločnosť Slovensko a.s.,ZSSK,45
+31,SNCF VOYAGEURS,1187,13
+32,SNCF Voyageurs SA,5111,13
+33,SNCF Voyageurs EA,5235,13
+34,SNCF Voyageurs LO,5270,13
+35,TMR SA,5429,13
+36,OCEdefault,OCEdefault,13
+37,Unknown operator,UNKNOWN,45
+38,European Sleeper,ES,27

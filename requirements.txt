@@ -12,3 +12,5 @@ streamlit
 plotly
 networkx
 python-dotenv
+reverse-geocoder
+pycountry

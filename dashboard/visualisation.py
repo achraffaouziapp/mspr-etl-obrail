@@ -117,34 +117,40 @@ def load_source_options() -> pd.DataFrame:
 
 
 def load_source_stats() -> pd.DataFrame:
-    return run_query("""
+    query = """
         SELECT
             ds.source_name,
             ds.source_format,
-            COUNT(t.trip_id) AS total_trips
+            COUNT(t.trip_id)::INTEGER AS total_trips
         FROM trip t
         JOIN data_source ds
             ON t.data_source_id = ds.data_source_id
         GROUP BY ds.source_name, ds.source_format
         ORDER BY total_trips DESC;
-    """)
+    """
+
+    df = run_query(query)
+    df["total_trips"] = pd.to_numeric(df["total_trips"], errors="coerce").fillna(0)
+
+    return df
 
 
 def load_train_type_stats() -> pd.DataFrame:
-    return run_query("""
+    query = """
         SELECT
             tt.type_name,
-            COUNT(t.trip_id) AS total_trips,
-            ROUND(
-                100.0 * COUNT(t.trip_id) / SUM(COUNT(t.trip_id)) OVER (),
-                2
-            ) AS percentage
+            COUNT(t.trip_id)::INTEGER AS total_trips
         FROM trip t
         JOIN train_type tt
             ON t.train_type_id = tt.train_type_id
         GROUP BY tt.type_name
         ORDER BY total_trips DESC;
-    """)
+    """
+
+    df = run_query(query)
+    df["total_trips"] = pd.to_numeric(df["total_trips"], errors="coerce").fillna(0)
+
+    return df
 
 
 def load_stations_by_country() -> pd.DataFrame:
@@ -418,8 +424,52 @@ def apply_pro_layout(fig, height: int = 620):
 # Visualisations Plotly
 # ============================================================
 
-def create_horizontal_bar_chart(df: pd.DataFrame, x_col: str, y_col: str, title: str, height: int = 620):
-    df = prepare_numeric_column(df, x_col)
+def create_horizontal_bar_chart(
+    df: pd.DataFrame,
+    x_col: str,
+    y_col: str,
+    title: str,
+    height: int = 620
+):
+    df = df.copy()
+
+    if df.empty:
+        fig = go.Figure()
+        fig.update_layout(
+            title=title,
+            height=height,
+            annotations=[
+                dict(
+                    text="Aucune donnée disponible",
+                    x=0.5,
+                    y=0.5,
+                    showarrow=False,
+                    font=dict(size=18)
+                )
+            ]
+        )
+        return apply_pro_layout(fig, height=height)
+
+    df[x_col] = pd.to_numeric(df[x_col], errors="coerce").fillna(0)
+    df = df[df[x_col] > 0]
+
+    if df.empty:
+        fig = go.Figure()
+        fig.update_layout(
+            title=title,
+            height=height,
+            annotations=[
+                dict(
+                    text="Aucune valeur positive à afficher",
+                    x=0.5,
+                    y=0.5,
+                    showarrow=False,
+                    font=dict(size=18)
+                )
+            ]
+        )
+        return apply_pro_layout(fig, height=height)
+
     df = df.sort_values(x_col, ascending=True)
 
     fig = px.bar(
@@ -429,11 +479,30 @@ def create_horizontal_bar_chart(df: pd.DataFrame, x_col: str, y_col: str, title:
         orientation="h",
         text=x_col,
         title=title,
-        labels={x_col: "Volume", y_col: ""}
+        labels={
+            x_col: "Volume",
+            y_col: ""
+        }
     )
-    fig.update_traces(texttemplate="%{text:,.0f}", textposition="outside", marker_line_width=0)
-    fig.update_xaxes(showgrid=True, gridcolor="#EEF2F7")
-    fig.update_yaxes(showgrid=False)
+
+    fig.update_traces(
+        texttemplate="%{text:,.0f}",
+        textposition="outside",
+        marker_line_width=0
+    )
+
+    fig.update_xaxes(
+        type="linear",
+        title="Volume",
+        showgrid=True,
+        gridcolor="#EEF2F7",
+        rangemode="tozero"
+    )
+
+    fig.update_yaxes(
+        showgrid=False
+    )
+
     return apply_pro_layout(fig, height=height)
 
 

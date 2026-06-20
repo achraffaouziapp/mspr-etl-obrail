@@ -1,0 +1,19 @@
+{
+  "source_name": "European Sleeper Timetable",
+  "source_url": "https://www.europeansleeper.eu/timetable",
+  "source_format": "HTML + structured CSV",
+  "extraction_date": "2026-06-20T15:43:51.670807+00:00",
+  "licence": "Public timetable page",
+  "raw_files": [
+    "timetable.html",
+    "european_sleeper_stations.csv",
+    "european_sleeper_routes.csv",
+    "european_sleeper_stop_times.csv"
+  ],
+  "download_info": {
+    "status_code": 200,
+    "content_length": 76085,
+    "html_file": "C:\\Users\\DELL PRO\\Desktop\\ETL\\mspr-etl-obrail\\data\\raw\\european_sleeper\\timetable.html"
+  },
+  "import_status": "OK"
+}

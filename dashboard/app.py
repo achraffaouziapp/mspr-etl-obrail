@@ -19,8 +19,6 @@ from visualisation import (
     load_trips,
     load_route_network,
     create_horizontal_bar_chart,
-    create_log_source_bar_chart,
-    create_train_type_share_chart,
     create_sunburst_chart,
     create_heatmap_counts,
     create_quality_heatmap,
@@ -80,18 +78,6 @@ st.markdown(
             margin-bottom: 1.2rem;
         }
 
-        .insight-box {
-            background: #F8FAFC;
-            border-left: 5px solid #0284C7;
-            border-radius: 14px;
-            padding: 18px 22px;
-            margin-top: 14px;
-            margin-bottom: 28px;
-            color: #334155;
-            font-size: 0.98rem;
-            line-height: 1.55;
-        }
-
         div[data-testid="stMetric"] {
             background-color: #FFFFFF;
             border: 1px solid #E5E7EB;
@@ -120,6 +106,18 @@ st.markdown(
             box-shadow: 0 8px 26px rgba(15, 23, 42, 0.07);
         }
 
+        .explanation-box {
+            background-color: #F8FAFC;
+            border-left: 5px solid #0284C7;
+            border-radius: 14px;
+            padding: 18px 22px;
+            margin-top: 8px;
+            margin-bottom: 34px;
+            color: #334155;
+            font-size: 0.96rem;
+            line-height: 1.55;
+        }
+
         .stTabs [data-baseweb="tab-list"] {
             gap: 12px;
             margin-top: 22px;
@@ -138,6 +136,11 @@ st.markdown(
             color: #0369A1 !important;
             border: 1px solid #7DD3FC !important;
         }
+
+        hr {
+            margin-top: 2rem;
+            margin-bottom: 2rem;
+        }
     </style>
     """,
     unsafe_allow_html=True
@@ -148,10 +151,6 @@ def section(title: str, subtitle: str = ""):
     st.markdown(f'<div class="section-title">{title}</div>', unsafe_allow_html=True)
     if subtitle:
         st.markdown(f'<div class="section-subtitle">{subtitle}</div>', unsafe_allow_html=True)
-
-
-def insight(text: str):
-    st.markdown(f'<div class="insight-box">{text}</div>', unsafe_allow_html=True)
 
 
 def chart_block(fig):
@@ -166,7 +165,14 @@ def table_block(df):
     st.markdown('</div>', unsafe_allow_html=True)
 
 
-st.markdown('<div class="dashboard-title">🚆 ObRail Europe — Dashboard analytique</div>', unsafe_allow_html=True)
+def explanation_block(text: str):
+    st.markdown(f'<div class="explanation-box">{text}</div>', unsafe_allow_html=True)
+
+
+st.markdown(
+    '<div class="dashboard-title">🚆 ObRail Europe — Dashboard analytique</div>',
+    unsafe_allow_html=True
+)
 st.markdown(
     '<div class="dashboard-subtitle">Pilotage visuel de la qualité, du réseau et des volumes ferroviaires chargés dans PostgreSQL.</div>',
     unsafe_allow_html=True
@@ -270,35 +276,50 @@ tab_exec, tab_transport, tab_quality, tab_network = st.tabs([
 with tab_exec:
     section(
         "Vue exécutive",
-        "Les volumes sont affichés avec une échelle adaptée pour éviter que les petites sources deviennent invisibles."
+        "Les graphiques présentent les volumes principaux du projet avec un affichage simple et lisible."
     )
 
     source_stats_df = load_source_stats()
-    train_type_stats_df = load_train_type_stats()
     stations_country_df = load_stations_by_country()
+    train_type_stats_df = load_train_type_stats()
 
-    fig_sources_log = create_log_source_bar_chart(source_stats_df, height=560)
-    chart_block(fig_sources_log)
+    # Diagramme simple, non logarithmique : volume de trajets par source.
+    fig_sources = create_horizontal_bar_chart(
+        source_stats_df,
+        x_col="total_trips",
+        y_col="source_name",
+        title="Volume de trajets par source de données",
+        height=560
+    )
+    chart_block(fig_sources)
 
-    insight(
-        "<b>Lecture métier :</b> l’échelle logarithmique permet de comparer des sources de tailles très différentes. "
-        "SNCF GTFS est une source opérationnelle très volumineuse, alors que Back-on-Track est une source spécialisée sur les trains de nuit. "
-        "La différence de volume est donc attendue et ne signifie pas une erreur de traitement."
+    explanation_block(
+        "Ce graphique compare les volumes réellement chargés par source. "
+        "La source SNCF GTFS contient un volume beaucoup plus important car elle couvre "
+        "un périmètre opérationnel large, tandis que Back-on-Track est une source spécialisée "
+        "sur les trains de nuit. Cette différence est conservée car elle reflète les données réelles."
     )
 
-    fig_day_night = create_train_type_share_chart(train_type_stats_df, height=560)
-    chart_block(fig_day_night)
+    # Graphique séparé jour / nuit.
+    fig_train_types = create_horizontal_bar_chart(
+        train_type_stats_df,
+        x_col="total_trips",
+        y_col="type_name",
+        title="Volume de trajets par type de train",
+        height=460
+    )
+    chart_block(fig_train_types)
 
-    insight(
-        "<b>Lecture métier :</b> ce graphique sépare clairement l’analyse jour / nuit. "
-        "Les trains de nuit constituent un segment plus restreint que les trains de jour, ce qui est cohérent avec le périmètre des sources disponibles."
+    explanation_block(
+        "Le graphique jour / nuit est séparé du graphique des sources afin de ne pas confondre "
+        "le volume d'une source de données avec la catégorie métier du trajet."
     )
 
     fig_countries = create_horizontal_bar_chart(
         stations_country_df.head(15),
         x_col="total_stations",
         y_col="country_name",
-        title="Histogramme horizontal — top 15 pays par nombre de gares",
+        title="Top 15 pays par nombre de gares",
         height=680
     )
     chart_block(fig_countries)
@@ -321,7 +342,7 @@ with tab_transport:
         operators_df,
         x_col="total_trips",
         y_col="operator_name",
-        title="Histogramme horizontal — top opérateurs par nombre de trajets",
+        title="Top opérateurs par nombre de trajets",
         height=700
     )
     chart_block(fig_operators)
