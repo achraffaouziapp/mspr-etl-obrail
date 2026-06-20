@@ -1,0 +1,14 @@
+requests
+pandas
+beautifulsoup4
+lxml
+html5lib
+psycopg2-binary
+fastapi
+uvicorn
+psycopg2-binary
+python-dotenv
+streamlit
+plotly
+networkx
+python-dotenv

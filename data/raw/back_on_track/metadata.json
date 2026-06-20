@@ -1,0 +1,17 @@
+{
+  "source_name": "Back-on-Track Night Train Data",
+  "source_url": "https://github.com/Back-on-Track-eu/night-train-data",
+  "source_format": "JSON",
+  "extraction_date": "2026-06-18T18:07:05",
+  "files_extracted": [
+    "agencies.json",
+    "stops.json",
+    "routes.json",
+    "trips.json",
+    "trip_stop.json",
+    "calendar.json",
+    "calendar_dates.json",
+    "classes.json"
+  ],
+  "import_status": "success"
+}

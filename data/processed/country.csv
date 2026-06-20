@@ -1,0 +1,17 @@
+country_id,country_name,country_code
+1,Austria,AT
+2,Belgium,BE
+3,Czechia,CZ
+4,Denmark,DK
+5,Finland,FI
+6,France,FR
+7,Germany,DE
+8,Italy,IT
+9,Netherlands,NL
+10,Norway,NO
+11,Russia,RU
+12,Spain,ES
+13,Sweden,SE
+14,Switzerland,CH
+15,United Kingdom,GB
+16,Unknown,UNK

@@ -1,0 +1,100 @@
+country,city,railway_station,passengers_millions_per_year,passengers_millions_per_year_2,passengers_millions_per_year_3,passengers_millions_per_year_4,platforms,sourced_data_year
+France,Paris,Gare du Nord,257 [ 1 ],51.1 [ 2 ],47.4 [ 2 ],,30,2024
+Germany,Hamburg,Hamburg Hauptbahnhof,196 [ 3 ],,,,12,2019
+Germany,Frankfurt am Main,Frankfurt (Main) Hauptbahnhof,179.9 [ 3 ],,,,29,2019
+Italy,Rome,Roma Termini,175 [ 4 ],,,,32,2023
+Switzerland,Zürich,Zürich HB,164.2 [ 5 ],,,,26,2025
+Germany,Munich,München Hbf,150.7 [ 3 ],,,,34,2019
+Germany,Berlin,Berlin Hbf,120.1 [ 3 ],,,,16,2019
+Italy,Milan,Milano Centrale,120 [ 6 ],,,,24 [ 7 ],
+Germany,Cologne,Köln Hbf,116.1 [ 3 ],,,,11,2019
+France,Paris,Gare Saint-Lazare,114.1 [ 1 ],46.9 [ 2 ],,,27,2024
+France,Paris,Gare de Lyon,113.2 [ 1 ],36.5 [ 2 ],37.5 [ 2 ],,28,2024
+Spain,Madrid,Madrid Atocha,112.6 [ 8 ],,91.3,21.4,24,2023
+United Kingdom,London,London Liverpool Street,98 [ 9 ],67.2,,,19,2024–2025
+Germany,Berlin,Berlin Friedrichstraße,95.6 [ 3 ],,,,8,2019
+Germany,Hannover,Hannover Hbf,95.3 [ 3 ],,,,12,2019
+Germany,Stuttgart,Stuttgart Hbf,93.1 [ 3 ],,,,17,2019
+Germany,Berlin,Berlin Ostkreuz,91.3 [ 3 ],,,,12,2019
+Germany,Düsseldorf,Düsseldorf Hbf,89.8 [ 3 ],,,,20,2019
+Russia,Moscow,Moscow Yaroslavsky,78.6 [ 10 ],,71.8,6.8,16,2019
+Germany,Nuremberg,Nürnberg Hbf,76.7 [ 3 ],,,,21,2019
+Netherlands,Utrecht,Utrecht Centraal,75.7 [ 11 ],,,,16,2019
+Germany,Berlin,Berlin Gesundbrunnen,74.1 [ 3 ],,,,10,2019
+Netherlands,Amsterdam,Amsterdam Centraal,72.8 [ 12 ],,,,11,2019
+Russia,Moscow,Moscow Kursky,71.1 [ 10 ],,58.3,12.8,17,2019
+United Kingdom,London,London Waterloo,70.4 [ 9 ],82.9,,,24,2024–2025
+Italy,Turin,Torino Porta Nuova,70 [ 13 ],,,,20,
+United Kingdom,London,London Paddington,69.9 [ 9 ],48.6,,,15,2024–2025
+France,Paris,Gare Montparnasse,68.9 [ 1 ],29.9 [ 2 ],,,28,2024
+United Kingdom,London,Tottenham Court Road,68.1 [ 9 ],,,,2,2024–2025
+Germany,Berlin,Berlin Südkreuz,65.3 [ 3 ],,,,10,2019
+Switzerland,Bern,Bern,64.6 [ 5 ] [ note 1 ],,,,17,2025
+Germany,Munich,München Ostbf,63.5 [ 3 ],,,,14,2019
+Germany,Munich,München Marienplatz,59.5 [ 3 ],,,,2,2019
+Italy,Florence,Firenze Santa Maria Novella,59 [ 14 ],,,,19,
+Italy,Bologna,Bologna Centrale,58 [ 15 ],,,,28,
+Germany,Essen,Essen Hbf,55.5 [ 3 ],,,,13,2019
+Germany,Berlin,Berlin Alexanderplatz,55.5 [ 3 ],,,,4,2019
+Norway,Oslo,Oslo sentralstasjon,54.8 [ 16 ],,,,19,
+United Kingdom,London,London Bridge,54.7 [ 9 ],74.3,,,15,2024–2025
+United Kingdom,London,London Victoria,53.8 [ 9 ],85.5,,,19,2024–2025
+Germany,Bremen,Bremen Hbf,53.7 [ 3 ],,,,9,2019
+United Kingdom,London,Stratford,51.5 [ 9 ],64.9,,,9,2024–2025
+Italy,Rome,Roma Tiburtina,51 [ 17 ],,,,20,
+Spain,Barcelona,Barcelona Sants,50.7 [ 8 ],,37.2,13.5,14,2023
+Germany,Munich,München-Pasing,50.7 [ 3 ],,,,9,2019
+Germany,Hamburg,Hamburg-Altona,50.4 [ 3 ],,,,12,2019
+United Kingdom,London,Farringdon,50.2 [ 9 ],,,,4,2024–2025
+Italy,Naples,Napoli Centrale,50 [ 18 ],,,,25,
+Russia,Moscow,Moscow Kazansky,49.9 [ 10 ],,33.5,16.4,17,2019
+Germany,Leipzig,Leipzig Hbf,49.3 [ 3 ],,,,21,2019
+Germany,Duisburg,Duisburg Hbf,47.5 [ 3 ],,,,12,2019
+Germany,Berlin,Berlin Zoologischer Garten,47.4 [ citation needed ],,,,6,
+Austria,Vienna,Wien Hbf,45.4 [ 19 ],,,,12,2024
+Finland,Helsinki,Helsingin päärautatieasema,45.1 [ 20 ],,38.7,6.4,19,2019
+Germany,Dortmund,Dortmund Hbf,44.9 [ 3 ],,,,16,2019
+Germany,Mannheim,Mannheim Hbf,43.1 [ 3 ],,,8,11,
+Germany,Braunschweig,Braunschweig Hbf,43.1 [ 3 ],40.8,,,9,2019
+United Kingdom,London,Bond Street,42.8 [ 9 ],,,,2,2024–2025
+France,Paris,Gare de l'Est,42.7 [ 1 ],22.4 [ 2 ],,,29,2024
+France,Lyon,Lyon-Part-Dieu,42.4 [ 1 ],,,,12,2024
+France,Juvisy-sur-Orge,Juvisy,41.9 [ 1 ],,,,13,2024
+United Kingdom,London,London Euston,40.2 [ 9 ],41.1,,,18,2024–2025
+Russia,Moscow,Moscow Leningradsky,39.7 [ 10 ],,27.6,12.1,10,2019
+Switzerland,Lucerne,Luzern,39.7 [ 5 ],,,,14,2025
+Sweden,Stockholm,Stockholm City,39.2 [ 21 ],,,,4,2018
+United Kingdom,London,London St Pancras,38.8 [ 9 ],44.9,,,15,2024–2025
+France,Paris,Magenta,38.8 [ 1 ],,,,4,2024
+Spain,Madrid,Madrid Chamartín,38.3 [ 8 ],,26.8,11.4,25,2023
+France,Paris,Haussmann–Saint-Lazare,38.3 [ 1 ],,,,4,2024
+Switzerland,Winterthur,Winterthur,37.9 [ 5 ],,,,9,2025
+Switzerland,Basel,Basel SBB,37.9 [ 5 ] [ note 2 ],,,,23,2025
+United Kingdom,London,Whitechapel,37.1 [ 9 ],,,,4,2024–2025
+Netherlands,Rotterdam,Rotterdam Centraal,37.1 [ 22 ],,,,13,2019
+Belgium,Brussels,Bruxelles-Midi/Brussel-Zuid,37 [ 23 ],,,,22,2024
+France,Saint-Denis,Saint-Denis,37 [ 1 ],,,,6,2024
+United Kingdom,Birmingham,Birmingham New Street,36.6 [ 9 ],,,,12,2024–2025
+Germany,Berlin,Berlin Ostbahnhof,36.5 [ citation needed ],,,,9,
+Germany,Stuttgart,Stuttgart Stadtmitte,36.1 [ 3 ],,,,2,2019
+Netherlands,The Hague,Den Haag Centraal,36.1 [ 24 ],,,,12,2019
+Netherlands,Haarlemmermeer,Schiphol Airport,35.8 [ 25 ],,,,6,2019
+Germany,Frankfurt am Main,Frankfurt (Main) Konstablerwache,35.8 [ 3 ],,,,2,2019
+Belgium,Brussels,Bruxelles-Central/Brussel-Centraal,35.8 [ 23 ],,,,6,2024
+Switzerland,Lausanne,Lausanne,35.6 [ 5 ],,,,10,2025
+Belgium,Brussels,Bruxelles-Nord/Brussel-Noord,35.2 [ 23 ],,,,12,2024
+Germany,Frankfurt am Main,Frankfurt (Main) Hauptwache,35 [ 3 ],,,,2,2019
+Denmark,Copenhagen,Københavns Hovedbanegård,34.1,11 [ 26 ],17.6 [ 26 ],16.5 [ 27 ] [ 28 ],15,2025
+Austria,Vienna,Wien Meidling,33.9 [ 19 ],,,,8,2024
+Italy,Milan,Milano Cadorna,33.1 [ 29 ],,,,10,
+Spain,Madrid,Nuevos Ministerios,32.9 [ 8 ],,32.9,,6,2023
+France,Puteaux,La Défense,31.7 [ 1 ],,,,10,2024
+France,Aulnay-sous-Bois,Aulnay-sous-Bois,31.7 [ 1 ],,,,5,2024
+Switzerland,Zürich,Zürich Oerlikon,31.5 [ 5 ],,,,8,2025
+Italy,Venice,Venezia Mestre,31 [ 30 ],,,,13,
+Germany,Berlin,Berlin-Lichtenberg,31 [ citation needed ],,,,8,
+Belgium,Ghent,Gent-Sint-Pieters,30.5 [ 23 ],,,,12,2024
+Switzerland,Geneva,Genève,30.3 [ 5 ],,,,8,2025
+Czechia,Prague,Praha hlavní nádraží,30.2 [ 31 ],,,,16,2017
+Netherlands,Leiden,Leiden Centraal,30.2 [ 32 ],,,,6,2019
+Italy,Venice,Venezia Santa Lucia,30 [ 30 ],,,,16,

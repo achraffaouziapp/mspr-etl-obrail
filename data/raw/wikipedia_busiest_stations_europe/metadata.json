@@ -1,0 +1,25 @@
+{
+  "source_name": "Wikipedia - List of busiest railway stations in Europe",
+  "source_url": "https://en.wikipedia.org/wiki/List_of_busiest_railway_stations_in_Europe",
+  "source_format": "HTML scraping",
+  "source_description": "Scraping d'un tableau HTML listant des gares ferroviaires européennes avec pays, ville, gare, fréquentation, nombre de quais et année de référence.",
+  "extraction_date": "2026-06-18T18:52:04",
+  "files_extracted": [
+    "page.html",
+    "busiest_railway_stations_europe.csv"
+  ],
+  "raw_folder": "data\\raw\\wikipedia_busiest_stations_europe",
+  "row_count": 99,
+  "columns": [
+    "country",
+    "city",
+    "railway_station",
+    "passengers_millions_per_year",
+    "passengers_millions_per_year_2",
+    "passengers_millions_per_year_3",
+    "passengers_millions_per_year_4",
+    "platforms",
+    "sourced_data_year"
+  ],
+  "import_status": "success"
+}

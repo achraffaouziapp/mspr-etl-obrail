@@ -1,0 +1,12 @@
+{
+  "source_name": "Gares de voyageurs du réseau ferré national",
+  "source_url": "https://ressources.data.sncf.com/api/explore/v2.1/catalog/datasets/gares-de-voyageurs/exports/csv?use_labels=true",
+  "source_format": "CSV",
+  "source_description": "Référentiel des gares de voyageurs SNCF avec identifiants, noms, trigrammes et coordonnées géographiques.",
+  "extraction_date": "2026-06-18T18:33:40",
+  "files_extracted": [
+    "gares-de-voyageurs.csv"
+  ],
+  "raw_folder": "data\\raw\\gares_voyageurs",
+  "import_status": "success"
+}
