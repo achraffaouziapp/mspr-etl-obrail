@@ -238,6 +238,125 @@ def load_top_operators(limit: int = 15) -> pd.DataFrame:
     """, (limit,))
 
 
+def load_operator_data_volume(limit: int = 15) -> pd.DataFrame:
+    """
+    Calcule le volume de données collectées par opérateur.
+
+    Le volume est estimé à partir :
+    - du nombre de trajets associés à chaque opérateur ;
+    - du nombre d'arrêts collectés pour ces trajets.
+
+    Cela permet d'identifier les opérateurs les plus représentés
+    dans la base ObRail.
+    """
+    query = """
+        SELECT
+            COALESCE(NULLIF(o.operator_name, ''), 'Opérateur inconnu') AS operator_name,
+            COUNT(DISTINCT t.trip_id) AS total_trips,
+            COUNT(ts.trip_id) AS total_stops,
+            COUNT(DISTINCT t.trip_id) + COUNT(ts.trip_id) AS total_records
+        FROM trip t
+        JOIN route r
+            ON t.route_id = r.route_id
+        LEFT JOIN "operator" o
+            ON r.operator_id = o.operator_id
+        LEFT JOIN trip_stop ts
+            ON t.trip_id = ts.trip_id
+        GROUP BY operator_name
+        ORDER BY total_records DESC
+        LIMIT %s;
+    """
+
+    return run_query(query, (limit,))
+
+
+def load_missing_values_rate() -> pd.DataFrame:
+    """
+    Calcule le taux de valeurs manquantes pour chaque colonne
+    des principales tables du modèle relationnel.
+
+    Une valeur est considérée comme manquante si elle est NULL
+    ou si elle correspond à une chaîne vide.
+    """
+    tables = [
+        "country",
+        "city",
+        "station",
+        "operator",
+        "train_type",
+        "data_source",
+        "route",
+        "trip",
+        "trip_stop",
+        "quality_check",
+    ]
+
+    tables_sql = ", ".join([f"'{table}'" for table in tables])
+
+    columns_query = f"""
+        SELECT
+            table_name,
+            column_name
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name IN ({tables_sql})
+        ORDER BY table_name, ordinal_position;
+    """
+
+    columns_df = run_query(columns_query)
+
+    results = []
+
+    for _, row in columns_df.iterrows():
+        table_name = row["table_name"]
+        column_name = row["column_name"]
+
+        query = f"""
+            SELECT
+                COUNT(*) AS total_rows,
+                SUM(
+                    CASE
+                        WHEN "{column_name}" IS NULL
+                          OR NULLIF(TRIM(CAST("{column_name}" AS TEXT)), '') IS NULL
+                        THEN 1
+                        ELSE 0
+                    END
+                ) AS missing_rows
+            FROM "{table_name}";
+        """
+
+        stat_df = run_query(query)
+
+        if stat_df.empty:
+            continue
+
+        total_rows = int(stat_df.loc[0, "total_rows"] or 0)
+        missing_rows = int(stat_df.loc[0, "missing_rows"] or 0)
+
+        missing_rate = 0
+        if total_rows > 0:
+            missing_rate = round((missing_rows / total_rows) * 100, 2)
+
+        results.append({
+            "table_name": table_name,
+            "column_name": column_name,
+            "total_rows": total_rows,
+            "missing_rows": missing_rows,
+            "missing_rate_pct": missing_rate,
+        })
+
+    df = pd.DataFrame(results)
+
+    if df.empty:
+        return df
+
+    return df.sort_values(
+        by=["missing_rate_pct", "missing_rows"],
+        ascending=False
+    )
+
+
+
 def load_source_train_type_counts() -> pd.DataFrame:
     """
     Calcule le croisement entre source de données et type de train.
@@ -258,6 +377,63 @@ def load_source_train_type_counts() -> pd.DataFrame:
         GROUP BY ds.source_name, tt.type_name
         ORDER BY ds.source_name, tt.type_name;
     """)
+
+def load_co2_comparison_by_train_type() -> pd.DataFrame:
+    """
+    Calcule une estimation comparative des émissions CO₂ par type de train.
+
+    La distance est estimée à partir des coordonnées GPS des gares de départ
+    et d'arrivée. Cette estimation permet de comparer les émissions d'un trajet
+    réalisé en train avec une hypothèse équivalente en avion.
+
+    Hypothèses utilisées :
+    - train : 6,7 gCO₂e par km
+    - avion : 83 gCO₂ par km
+
+    Ces valeurs servent uniquement à produire un indicateur pédagogique
+    pour comparer les ordres de grandeur.
+    """
+    query = """
+        WITH trip_distances AS (
+            SELECT
+                tt.type_name,
+                t.trip_id,
+                6371 * 2 * ASIN(
+                    SQRT(
+                        POWER(SIN(RADIANS((arr.latitude - dep.latitude) / 2)), 2)
+                        + COS(RADIANS(dep.latitude))
+                        * COS(RADIANS(arr.latitude))
+                        * POWER(SIN(RADIANS((arr.longitude - dep.longitude) / 2)), 2)
+                    )
+                ) AS distance_km
+            FROM trip t
+            JOIN train_type tt
+                ON t.train_type_id = tt.train_type_id
+            JOIN route r
+                ON t.route_id = r.route_id
+            JOIN station dep
+                ON r.departure_station_id = dep.station_id
+            JOIN station arr
+                ON r.arrival_station_id = arr.station_id
+            WHERE dep.latitude IS NOT NULL
+              AND dep.longitude IS NOT NULL
+              AND arr.latitude IS NOT NULL
+              AND arr.longitude IS NOT NULL
+              AND dep.station_id <> arr.station_id
+        )
+        SELECT
+            type_name,
+            COUNT(*) AS total_trips,
+            ROUND(SUM(distance_km)::numeric, 2) AS total_distance_km,
+            ROUND((SUM(distance_km) * 0.0067)::numeric, 2) AS train_co2_kg,
+            ROUND((SUM(distance_km) * 0.083)::numeric, 2) AS plane_co2_kg,
+            ROUND((SUM(distance_km) * (0.083 - 0.0067))::numeric, 2) AS avoided_co2_kg
+        FROM trip_distances
+        GROUP BY type_name
+        ORDER BY avoided_co2_kg DESC;
+    """
+
+    return run_query(query)
 
 
 def load_quality_stats() -> pd.DataFrame:
@@ -699,6 +875,245 @@ def create_sunburst_chart(df: pd.DataFrame, height: int = 680):
             borderwidth=1
         ),
         margin=dict(l=40, r=260, t=85, b=55)
+    )
+
+    return apply_pro_layout(fig, height=height)
+
+def create_co2_comparison_chart(df: pd.DataFrame, height: int = 620):
+    """
+    Crée un graphique comparant les émissions estimées du train
+    avec les émissions équivalentes d'un trajet en avion.
+
+    Le graphique permet de visualiser l'écart entre les deux scénarios
+    pour les trains de jour et les trains de nuit.
+    """
+    df = df.copy()
+
+    if df.empty:
+        fig = go.Figure()
+        fig.update_layout(
+            title="Comparaison CO₂ estimée : train vs avion",
+            height=height,
+            annotations=[
+                dict(
+                    text="Aucune donnée CO₂ disponible",
+                    x=0.5,
+                    y=0.5,
+                    showarrow=False,
+                    font=dict(size=18)
+                )
+            ]
+        )
+        return apply_pro_layout(fig, height=height)
+
+    df["train_co2_kg"] = pd.to_numeric(df["train_co2_kg"], errors="coerce").fillna(0)
+    df["plane_co2_kg"] = pd.to_numeric(df["plane_co2_kg"], errors="coerce").fillna(0)
+
+    melted_df = df.melt(
+        id_vars=["type_name"],
+        value_vars=["train_co2_kg", "plane_co2_kg"],
+        var_name="scenario",
+        value_name="co2_kg"
+    )
+
+    melted_df["scenario"] = melted_df["scenario"].replace({
+        "train_co2_kg": "Émissions estimées en train",
+        "plane_co2_kg": "Émissions équivalentes en avion"
+    })
+
+    fig = px.bar(
+        melted_df,
+        x="type_name",
+        y="co2_kg",
+        color="scenario",
+        barmode="group",
+        text="co2_kg",
+        title="Comparaison CO₂ estimée : train vs avion",
+        labels={
+            "type_name": "Type de train",
+            "co2_kg": "Émissions estimées, kg CO₂",
+            "scenario": "Scénario"
+        }
+    )
+
+    fig.update_traces(
+        texttemplate="%{text:,.0f} kg",
+        textposition="outside"
+    )
+
+    fig.update_yaxes(
+        title="Émissions estimées, kg CO₂",
+        showgrid=True,
+        gridcolor="#EEF2F7"
+    )
+
+    fig.update_xaxes(
+        title="Type de train"
+    )
+
+    return apply_pro_layout(fig, height=height)
+
+
+def create_operator_data_volume_chart(df: pd.DataFrame, height: int = 620):
+    """
+    Crée un graphique montrant le volume de données collectées par opérateur.
+
+    Le volume total correspond au nombre de trajets + au nombre d'arrêts.
+    """
+    df = df.copy()
+
+    if df.empty:
+        fig = go.Figure()
+        fig.update_layout(
+            title="Volume de données collectées par opérateur",
+            height=height,
+            annotations=[
+                dict(
+                    text="Aucune donnée disponible",
+                    x=0.5,
+                    y=0.5,
+                    showarrow=False,
+                    font=dict(size=18)
+                )
+            ]
+        )
+        return apply_pro_layout(fig, height=height)
+
+    df["total_records"] = pd.to_numeric(
+        df["total_records"],
+        errors="coerce"
+    ).fillna(0)
+
+    df = df.sort_values("total_records", ascending=True)
+
+    fig = px.bar(
+        df,
+        x="total_records",
+        y="operator_name",
+        orientation="h",
+        text="total_records",
+        title="Volume de données collectées par opérateur",
+        labels={
+            "operator_name": "Opérateur",
+            "total_records": "Volume de données collectées"
+        },
+        hover_data={
+            "total_trips": True,
+            "total_stops": True,
+            "total_records": True,
+            "operator_name": False,
+        }
+    )
+
+    fig.update_traces(
+        texttemplate="%{text:,.0f}",
+        textposition="outside"
+    )
+
+    fig.update_xaxes(
+        title="Nombre total d'enregistrements",
+        showgrid=True,
+        gridcolor="#EEF2F7"
+    )
+
+    fig.update_yaxes(
+        title="Opérateur"
+    )
+
+    return apply_pro_layout(fig, height=height)
+
+
+def create_missing_values_rate_chart(df: pd.DataFrame, height: int = 650):
+    """
+    Crée un graphique affichant les colonnes avec le plus fort taux
+    de valeurs manquantes dans la base.
+
+    Cette visualisation permet d'identifier rapidement les champs
+    qui nécessitent une attention particulière dans le contrôle qualité.
+    """
+    df = df.copy()
+
+    if df.empty:
+        fig = go.Figure()
+        fig.update_layout(
+            title="Taux de valeurs manquantes par champ",
+            height=height,
+            annotations=[
+                dict(
+                    text="Aucune donnée disponible",
+                    x=0.5,
+                    y=0.5,
+                    showarrow=False,
+                    font=dict(size=18)
+                )
+            ]
+        )
+        return apply_pro_layout(fig, height=height)
+
+    df = df[df["missing_rows"] > 0].copy()
+
+    if df.empty:
+        fig = go.Figure()
+        fig.update_layout(
+            title="Taux de valeurs manquantes par champ",
+            height=height,
+            annotations=[
+                dict(
+                    text="Aucune valeur manquante détectée dans les tables analysées",
+                    x=0.5,
+                    y=0.5,
+                    showarrow=False,
+                    font=dict(size=18)
+                )
+            ]
+        )
+        return apply_pro_layout(fig, height=height)
+
+    df["field_label"] = df["table_name"] + "." + df["column_name"]
+
+    df["missing_rate_pct"] = pd.to_numeric(
+        df["missing_rate_pct"],
+        errors="coerce"
+    ).fillna(0)
+
+    df = df.sort_values("missing_rate_pct", ascending=False).head(20)
+    df = df.sort_values("missing_rate_pct", ascending=True)
+
+    fig = px.bar(
+        df,
+        x="missing_rate_pct",
+        y="field_label",
+        orientation="h",
+        text="missing_rate_pct",
+        title="Taux de valeurs manquantes par champ",
+        labels={
+            "field_label": "Champ analysé",
+            "missing_rate_pct": "Taux de valeurs manquantes (%)"
+        },
+        hover_data={
+            "table_name": True,
+            "column_name": True,
+            "total_rows": True,
+            "missing_rows": True,
+            "missing_rate_pct": True,
+            "field_label": False,
+        }
+    )
+
+    fig.update_traces(
+        texttemplate="%{text:.2f}%",
+        textposition="outside"
+    )
+
+    fig.update_xaxes(
+        title="Taux de valeurs manquantes (%)",
+        ticksuffix="%",
+        showgrid=True,
+        gridcolor="#EEF2F7"
+    )
+
+    fig.update_yaxes(
+        title="Champ"
     )
 
     return apply_pro_layout(fig, height=height)

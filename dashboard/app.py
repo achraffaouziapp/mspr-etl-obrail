@@ -17,6 +17,12 @@ from visualisation import (
     create_horizontal_bar_chart,
     create_sunburst_chart,
     create_network_graph,
+    load_co2_comparison_by_train_type,
+    load_operator_data_volume,
+    load_missing_values_rate,
+    create_operator_data_volume_chart,
+    create_missing_values_rate_chart,
+    create_co2_comparison_chart,
 )
 
 
@@ -265,10 +271,11 @@ with col7:
 
 
 # Organisation du dashboard en trois pages principales.
-tab_exec, tab_transport, tab_network = st.tabs([
+tab_exec, tab_transport, tab_network, tab_data_quality = st.tabs([
     "Vue exécutive",
     "Analyse transport",
-    "Réseau ferroviaire"
+    "Réseau ferroviaire",
+    "Pilotage données"
 ])
 
 
@@ -321,6 +328,14 @@ with tab_exec:
     )
     chart_block(fig_countries)
 
+    explanation_block(
+    "Cette visualisation met en évidence les pays les plus représentés dans le jeu de données "
+    "en fonction du nombre de gares recensées. Elle permet d’identifier les zones où la couverture "
+    "ferroviaire est la plus importante dans la base ObRail. Les pays en tête disposent d’un réseau "
+    "plus dense ou d’une meilleure disponibilité des données dans les sources collectées."
+    )
+
+
 
 with tab_transport:
     section(
@@ -367,6 +382,27 @@ with tab_transport:
         "Le centre du diagramme représente les sources de données, tandis que l'anneau extérieur indique le type de train associé : day ou night. "
         "La taille de chaque segment est proportionnelle au nombre de trajets chargés dans PostgreSQL."
     )
+
+    st.markdown("### Impact CO₂ estimé : train vs avion")
+
+    co2_df = load_co2_comparison_by_train_type()
+
+    fig_co2 = create_co2_comparison_chart(
+        co2_df,
+        height=620
+    )
+    chart_block(fig_co2)
+
+    explanation_block(
+        "Ce graphique estime les émissions CO₂ associées aux trajets ferroviaires "
+        "et les compare à un scénario équivalent en avion. "
+        "La distance est estimée à partir des coordonnées GPS des gares de départ et d'arrivée. "
+        "L'objectif n'est pas de produire un bilan carbone officiel, mais de donner un ordre de grandeur "
+        "permettant de comparer le rôle des trains de jour et des trains de nuit dans la mobilité bas-carbone."
+    )
+
+
+
 
 
 with tab_network:
@@ -430,3 +466,43 @@ with tab_network:
             file_name="trips_filtered.csv",
             mime="text/csv"
         )
+
+
+with tab_data_quality:
+    section("Pilotage du volume et de la qualité des données")
+
+    st.markdown("#### Volume de données collectées par opérateur")
+
+    operator_volume_df = load_operator_data_volume(limit=15)
+
+    fig_operator_volume = create_operator_data_volume_chart(
+        operator_volume_df,
+        height=620
+    )
+
+    chart_block(fig_operator_volume)
+
+    explanation_block(
+        "Cette visualisation présente les opérateurs ferroviaires les plus représentés "
+        "dans la base ObRail. Le volume est estimé à partir du nombre de trajets collectés "
+        "et du nombre d'arrêts associés à ces trajets. Elle permet d'identifier les opérateurs "
+        "qui contribuent le plus au jeu de données final."
+    )
+
+    st.markdown("#### Taux de valeurs manquantes par champ")
+
+    missing_values_df = load_missing_values_rate()
+
+    fig_missing_values = create_missing_values_rate_chart(
+        missing_values_df,
+        height=650
+    )
+
+    chart_block(fig_missing_values)
+
+    explanation_block(
+        "Cette visualisation met en évidence les champs qui contiennent le plus de valeurs "
+        "manquantes dans les tables principales du modèle relationnel. Elle permet de contrôler "
+        "rapidement la complétude du jeu de données et d'identifier les colonnes qui pourraient "
+        "nécessiter un nettoyage, une correction ou un enrichissement complémentaire."
+    )
