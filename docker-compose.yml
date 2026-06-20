@@ -1,34 +1,120 @@
-# Ce fichier lance les services nécessaires au projet avec Docker Compose.
-# Dans cette version, le seul service lancé est PostgreSQL.
+# ============================================================
+# Docker Compose - ObRail Europe
+# ============================================================
+# Ce fichier permet de lancer l'environnement complet du projet :
+# - une base PostgreSQL ;
+# - une API FastAPI ;
+# - un dashboard Streamlit.
+#
+# Important :
+# Dans Docker, l'API et le dashboard ne doivent pas utiliser DB_HOST=localhost.
+# Ils doivent utiliser DB_HOST=postgres, car "postgres" est le nom du service
+# PostgreSQL dans le réseau Docker interne.
+# ============================================================
 
 services:
+  # ------------------------------------------------------------
+  # Service PostgreSQL
+  # ------------------------------------------------------------
+  # Ce conteneur héberge la base de données relationnelle du projet.
+  # Les tables sont créées et alimentées par le script Python :
+  # scripts/loading/load_to_postgres.py
   postgres:
-    # Image officielle PostgreSQL utilisée pour créer la base de données.
-    # La version 16 est fixée pour éviter les différences de comportement entre versions.
     image: postgres:16
-
-    # Nom du conteneur Docker.
-    # Ce nom permet de le retrouver facilement avec docker ps ou docker exec.
     container_name: obrail_postgres
+    restart: unless-stopped
 
-    # Variables utilisées par PostgreSQL au premier démarrage du conteneur.
-    # Elles créent automatiquement la base, l'utilisateur et le mot de passe.
+    # Variables utilisées par l'image officielle PostgreSQL au premier démarrage.
+    # Elles permettent de créer automatiquement la base, l'utilisateur et le mot de passe.
     environment:
       POSTGRES_DB: obrail
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
 
-    # Rend PostgreSQL accessible depuis la machine locale.
-    # Le port 5432 du PC est relié au port 5432 du conteneur.
+    # Expose PostgreSQL sur le port 5432 de la machine locale.
+    # Cela permet aussi de se connecter avec pgAdmin ou DBeaver.
     ports:
       - "5432:5432"
 
-    # Stocke les données PostgreSQL dans un volume Docker persistant.
-    # Ainsi, la base n'est pas supprimée lorsque le conteneur est arrêté.
+    # Volume persistant : les données PostgreSQL restent disponibles
+    # même si le conteneur est arrêté puis relancé.
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
-# Déclaration du volume utilisé par PostgreSQL.
-# Docker le gère automatiquement et le conserve entre les redémarrages.
+    # Vérifie que PostgreSQL est prêt avant de lancer l'API et le dashboard.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d obrail"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ------------------------------------------------------------
+  # Service API FastAPI
+  # ------------------------------------------------------------
+  # Ce conteneur lance l'API REST du projet.
+  # Elle permet d'interroger les tables PostgreSQL depuis des endpoints HTTP.
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+
+    container_name: obrail_api
+    restart: unless-stopped
+
+    # Configuration de connexion à PostgreSQL pour l'API.
+    # DB_HOST vaut "postgres" car l'API communique avec le service Docker postgres.
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: obrail
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+
+    # Expose l'API sur http://localhost:8000
+    ports:
+      - "8000:8000"
+
+    # L'API démarre seulement lorsque PostgreSQL est considéré comme prêt.
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ------------------------------------------------------------
+  # Service Dashboard Streamlit
+  # ------------------------------------------------------------
+  # Ce conteneur lance l'interface visuelle du projet.
+  # Le dashboard lit les données depuis PostgreSQL et affiche les KPI,
+  # les graphiques et l'exploration des trajets.
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.dashboard
+
+    container_name: obrail_dashboard
+    restart: unless-stopped
+
+    # Configuration de connexion à PostgreSQL pour le dashboard.
+    # Comme pour l'API, DB_HOST doit pointer vers le service Docker postgres.
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: obrail
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+
+    # Expose Streamlit sur http://localhost:8501
+    ports:
+      - "8501:8501"
+
+    # Le dashboard démarre seulement après PostgreSQL.
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+# ------------------------------------------------------------
+# Volumes Docker
+# ------------------------------------------------------------
+# postgres_data conserve les fichiers internes de PostgreSQL.
+# Sans ce volume, les données seraient perdues à chaque suppression du conteneur.
 volumes:
   postgres_data:

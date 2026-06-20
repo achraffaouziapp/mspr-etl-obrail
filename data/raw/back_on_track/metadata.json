@@ -2,7 +2,7 @@
   "source_name": "Back-on-Track Night Train Data",
   "source_url": "https://github.com/Back-on-Track-eu/night-train-data",
   "source_format": "JSON",
-  "extraction_date": "2026-06-18T18:07:05",
+  "extraction_date": "2026-06-20T22:01:07",
   "files_extracted": [
     "agencies.json",
     "stops.json",

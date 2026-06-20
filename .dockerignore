@@ -1,0 +1,34 @@
+# ============================================================
+# Fichiers ignorés lors du build Docker
+# ============================================================
+# Ce fichier évite d'envoyer à Docker des fichiers inutiles ou lourds.
+# Cela accélère la construction des images et réduit leur taille.
+# ============================================================
+
+# Environnements virtuels Python locaux
+.venv/
+venv/
+
+# Cache Python
+__pycache__/
+*.pyc
+
+# Dossier Git
+.git/
+.gitignore
+
+# Fichier de configuration local.
+# Dans Docker, les variables sont définies directement dans docker-compose.yml.
+.env
+
+# Données brutes et transformées.
+# Elles peuvent être volumineuses et ne sont pas nécessaires pour construire l'API/dashboard.
+data/raw/
+data/processed/
+
+# Archives et fichiers de sortie temporaires
+*.zip
+
+# Fichiers visuels ou documents non nécessaires dans l'image Docker
+*.png
+*.pdf

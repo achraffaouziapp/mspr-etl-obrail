@@ -3,7 +3,7 @@
   "source_url": "https://en.wikipedia.org/wiki/List_of_busiest_railway_stations_in_Europe",
   "source_format": "HTML scraping",
   "source_description": "Scraping d'un tableau HTML listant des gares ferroviaires européennes avec pays, ville, gare, fréquentation, nombre de quais et année de référence.",
-  "extraction_date": "2026-06-18T18:52:04",
+  "extraction_date": "2026-06-20T22:01:12",
   "files_extracted": [
     "page.html",
     "busiest_railway_stations_europe.csv"

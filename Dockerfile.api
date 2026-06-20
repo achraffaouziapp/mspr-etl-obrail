@@ -1,0 +1,42 @@
+# ============================================================
+# Dockerfile API - ObRail Europe
+# ============================================================
+# Ce fichier construit l'image Docker de l'API FastAPI.
+# L'objectif est de lancer api/main.py dans un conteneur isolé.
+# ============================================================
+
+# Image Python légère utilisée comme base.
+# La version slim réduit la taille de l'image tout en gardant Python fonctionnel.
+FROM python:3.11-slim
+
+# Définit le dossier de travail à l'intérieur du conteneur.
+# Toutes les commandes suivantes seront exécutées depuis /app.
+WORKDIR /app
+
+# Empêche Python de créer des fichiers .pyc.
+# Cela garde le conteneur plus propre.
+ENV PYTHONDONTWRITEBYTECODE=1
+
+# Force l'affichage direct des logs Python dans Docker.
+# Très utile pour voir les erreurs immédiatement avec docker compose logs.
+ENV PYTHONUNBUFFERED=1
+
+# Copie uniquement le fichier des dépendances en premier.
+# Docker pourra réutiliser cette couche si le code change mais pas les dépendances.
+COPY requirements.txt .
+
+# Installe les librairies Python nécessaires au projet.
+# --no-cache-dir évite de garder le cache pip dans l'image finale.
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copie tout le projet dans le conteneur.
+# Le .dockerignore évite d'envoyer les fichiers inutiles comme .venv ou __pycache__.
+COPY . .
+
+# Documente le port utilisé par l'API.
+# Le port réel est exposé dans docker-compose.yml.
+EXPOSE 8000
+
+# Commande lancée au démarrage du conteneur.
+# host 0.0.0.0 permet à l'API d'être accessible depuis l'extérieur du conteneur.
+CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]

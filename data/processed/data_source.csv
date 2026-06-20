@@ -3,4 +3,4 @@ data_source_id,source_name,source_url,source_format,extraction_date,licence,raw_
 2,SNCF GTFS,https://eu.ftp.opendatasoft.com/sncf/plandata/Export_OpenData_SNCF_GTFS_NewTripId.zip,GTFS ZIP,2026-06-20,,agency.txt; stops.txt; routes.txt; trips.txt; stop_times.txt; calendar_dates.txt,success
 3,Gares de voyageurs SNCF,https://ressources.data.sncf.com,CSV,2026-06-20,,gares-de-voyageurs.csv,success
 4,Wikipedia - Busiest railway stations in Europe,https://en.wikipedia.org/wiki/List_of_busiest_railway_stations_in_Europe,HTML scraping,2026-06-20,,busiest_railway_stations_europe.csv,success
-5,European Sleeper Timetable,https://www.europeansleeper.eu/timetable,HTML + structured CSV,2026-06-20T15:43:55.602884+00:00,Public timetable page,european_sleeper_stations.csv; european_sleeper_routes.csv; european_sleeper_stop_times.csv,success
+5,European Sleeper Timetable,https://www.europeansleeper.eu/timetable,HTML + structured CSV,2026-06-20T20:01:34.804674+00:00,Public timetable page,european_sleeper_stations.csv; european_sleeper_routes.csv; european_sleeper_stop_times.csv,success

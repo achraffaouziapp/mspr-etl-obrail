@@ -1,0 +1,36 @@
+# ============================================================
+# Dockerfile Dashboard - ObRail Europe
+# ============================================================
+# Ce fichier construit l'image Docker du dashboard Streamlit.
+# Le dashboard se connecte à PostgreSQL pour afficher les indicateurs
+# et les visualisations du projet.
+# ============================================================
+
+# Image Python légère utilisée comme base.
+FROM python:3.11-slim
+
+# Définit le dossier de travail dans le conteneur.
+WORKDIR /app
+
+# Désactive la génération des fichiers .pyc.
+ENV PYTHONDONTWRITEBYTECODE=1
+
+# Affiche les logs Python directement dans la console Docker.
+ENV PYTHONUNBUFFERED=1
+
+# Copie le fichier des dépendances avant le reste du projet.
+# Cette organisation accélère les rebuilds Docker.
+COPY requirements.txt .
+
+# Installe les dépendances nécessaires au dashboard et aux modules partagés.
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copie le code du projet dans l'image Docker.
+COPY . .
+
+# Documente le port utilisé par Streamlit.
+EXPOSE 8501
+
+# Commande de démarrage du dashboard.
+# server.address=0.0.0.0 rend Streamlit accessible depuis le navigateur local.
+CMD ["streamlit", "run", "dashboard/app.py", "--server.address=0.0.0.0", "--server.port=8501"]

@@ -673,3 +673,12 @@ ObRail Europe met en place une chaîne complète de traitement de données ferro
 6. visualisation dans un dashboard.
 
 Le projet montre comment passer de données brutes issues de plusieurs sources à une base relationnelle exploitable et à des outils de consultation adaptés à l’analyse métier.
+
+## RGPD
+
+Le projet ne traite pas de données personnelles.  
+Une analyse RGPD simplifiée est disponible dans le dossier `docs/` :
+
+- `RGPD.md`
+- `inventaire_donnees_rgpd.md`
+- `registre_traitement.md`
