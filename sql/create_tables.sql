@@ -1,3 +1,9 @@
+/*
+   Note d'utilisation :
+   Ce fichier peut être rejoué pour reconstruire ou contrôler la base ObRail.
+   Il fait partie du livrable ETL car il rend le chargement reproductible.
+*/
+
 /* ============================================================
    ObRail Europe - Création du schéma PostgreSQL
    Fichier : sql/create_tables.sql

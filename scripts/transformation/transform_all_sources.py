@@ -5,6 +5,12 @@ Ce script harmonise les sources hétérogènes, crée les dimensions, construit 
 les trajets, les arrêts et les contrôles qualité, puis exporte le résultat dans data/processed.
 """
 
+# Repère pour l'exploitation :
+# Ce fichier est le coeur de l'ETL. Il prend toutes les sources brutes présentes dans data/raw,
+# construit les tables relationnelles et réécrit les CSV dans data/processed.
+# Il peut être relancé après chaque nouvelle extraction pour rafraîchir l'entrepôt.
+
+
 from pathlib import Path
 from datetime import datetime, date, timedelta, timezone
 import json

@@ -1,0 +1,83 @@
+
+# ------------------------------------------------------------
+# Python
+# ------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+
+# Environnements virtuels Python
+.venv/
+
+
+# Fichiers de cache et outils Python
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.ipynb_checkpoints/
+
+
+# ------------------------------------------------------------
+# Variables d'environnement et secrets
+# ------------------------------------------------------------
+.env
+.env.local
+.env.dev
+.env.prod
+*.env
+
+# On garde uniquement le modèle de configuration
+!.env.example
+
+
+# ------------------------------------------------------------
+# Données ETL générées
+# ------------------------------------------------------------
+# Les données brutes et transformées peuvent être lourdes.
+# Elles sont générées par les scripts ETL et livrées séparément si besoin.
+
+!data/
+!data/.gitkeep
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+
+# ------------------------------------------------------------
+# Logs et fichiers temporaires
+# ------------------------------------------------------------
+*.log
+logs/
+tmp/
+temp/
+*.tmp
+
+
+# ------------------------------------------------------------
+# PostgreSQL / Docker
+# ------------------------------------------------------------
+# Volumes ou données locales de base de données
+postgres_data/
+pgdata/
+db_data/
+
+# Fichiers Docker générés localement
+.docker/
+docker-data/
+
+# ------------------------------------------------------------
+# DBeaver
+# ------------------------------------------------------------
+# Paramètres locaux DBeaver, non nécessaires dans le dépôt Git
+.dbeaver/
+.dbeaver-data-sources.xml
+
+
+# ------------------------------------------------------------
+# Streamlit
+# ------------------------------------------------------------
+.streamlit/secrets.toml
+

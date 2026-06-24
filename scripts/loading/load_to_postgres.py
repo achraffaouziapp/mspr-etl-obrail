@@ -5,20 +5,28 @@ Le script recrée les tables à partir du fichier SQL, importe les CSV dans le b
 pour respecter les clés étrangères, puis vérifie le nombre de lignes chargées.
 """
 
+# Repère pour l'exploitation :
+# Ce script est la dernière étape de l'ETL. Il recrée le schéma puis charge les CSV processed.
+# Les paramètres de connexion viennent du fichier .env pour éviter de modifier le code selon la machine.
+
 from pathlib import Path
 import psycopg2
+from dotenv import load_dotenv
 
 
 DB_CONFIG = {
-    "host": "localhost",
-    "port": 5432,
-    "dbname": "obrail",
-    "user": "postgres",
-    "password": "postgres",
+    "host": os.getenv("DB_HOST", "localhost"),
+    "port": int(os.getenv("DB_PORT", 5432)),
+    "dbname": os.getenv("DB_NAME", "obrail"),
+    "user": os.getenv("DB_USER", "postgres"),
+    "password": os.getenv("DB_PASSWORD", "postgres"),
 }
 
 SQL_FILE = Path("sql/create_tables.sql")
 PROCESSED_DIR = Path("data/processed")
+
+# Charge les variables du fichier .env si le fichier est présent à la racine du projet.
+load_dotenv()
 
 
 LOAD_ORDER = [

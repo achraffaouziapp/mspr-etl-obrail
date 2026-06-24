@@ -1,3 +1,6 @@
+# Ce fichier permet de réinstaller l'environnement Python du projet sur une autre machine.
+# Commande conseillée : pip install -r requirements.txt
+
 
 # Manipulation et analyse des données
 pandas

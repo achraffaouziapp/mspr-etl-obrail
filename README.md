@@ -682,3 +682,15 @@ Une analyse RGPD simplifiée est disponible dans le dossier `docs/` :
 - `RGPD.md`
 - `inventaire_donnees_rgpd.md`
 - `registre_traitement.md`
+
+
+## Scripts documentés, paramétrables et reproductibles
+
+Les scripts ETL sont organisés pour pouvoir être rejoués dans le même ordre à chaque mise à jour des sources.
+
+- Les scripts d'extraction écrivent les fichiers bruts dans `data/raw/` et gardent des métadonnées.
+- Le script de transformation reconstruit les CSV relationnels dans `data/processed/`.
+- Le script de contrôle vérifie les fichiers, les clés et les relations avant le chargement.
+- Le script de chargement utilise PostgreSQL et respecte l'ordre des dépendances entre tables.
+
+La configuration de connexion à PostgreSQL est placée dans `.env`, ce qui permet de changer l'environnement sans modifier le code.

@@ -1,0 +1,11 @@
+table_name,row_count,column_count
+country,16,3
+city,32993,3
+station,40496,7
+operator,37,4
+train_type,2,2
+data_source,4,8
+route,4099,5
+trip,50983,12
+trip_stop,440227,8
+quality_check,50983,9

@@ -5,6 +5,10 @@ Ce script contrôle la présence des fichiers, les clés primaires, les relation
 tables et quelques règles métier avant le chargement dans PostgreSQL.
 """
 
+# Repère pour l'exploitation :
+# Ce script ne modifie pas les données. Il sert de contrôle avant chargement PostgreSQL.
+# En cas d'erreur ici, il vaut mieux corriger la transformation avant d'importer en base.
+
 from pathlib import Path
 import pandas as pd
 

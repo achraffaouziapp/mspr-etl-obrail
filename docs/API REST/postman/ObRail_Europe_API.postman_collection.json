@@ -1,0 +1,445 @@
+{
+  "info": {
+    "name": "ObRail Europe API",
+    "description": "Collection Postman pour tester les endpoints principaux de l'API ObRail Europe.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:8000",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Accueil",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [],
+          "query": []
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Health check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/health",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "health"
+          ],
+          "query": []
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Nombre de lignes par table",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/tables/counts",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "tables",
+            "counts"
+          ],
+          "query": []
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Types de train",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/train-types",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "train-types"
+          ],
+          "query": []
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Sources",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/sources",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "sources"
+          ],
+          "query": []
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Pays",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/countries",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "countries"
+          ],
+          "query": []
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Gares - Paris",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/stations?city=Paris&limit=20",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "stations"
+          ],
+          "query": [
+            {
+              "key": "city",
+              "value": "Paris"
+            },
+            {
+              "key": "limit",
+              "value": "20"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Opérateurs",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/operators",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "operators"
+          ],
+          "query": []
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Trajets",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/trips?limit=20",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "trips"
+          ],
+          "query": [
+            {
+              "key": "limit",
+              "value": "20"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Trajets night",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/trips?train_type=night&limit=20",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "trips"
+          ],
+          "query": [
+            {
+              "key": "train_type",
+              "value": "night"
+            },
+            {
+              "key": "limit",
+              "value": "20"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Trajets au départ de Paris",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/trips?departure_city=Paris&limit=20",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "trips"
+          ],
+          "query": [
+            {
+              "key": "departure_city",
+              "value": "Paris"
+            },
+            {
+              "key": "limit",
+              "value": "20"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Trajets vers Berlin",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/trips?arrival_city=Berlin&limit=20",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "trips"
+          ],
+          "query": [
+            {
+              "key": "arrival_city",
+              "value": "Berlin"
+            },
+            {
+              "key": "limit",
+              "value": "20"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Trajets Paris Berlin night",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/trips?departure_city=Paris&arrival_city=Berlin&train_type=night",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "trips"
+          ],
+          "query": [
+            {
+              "key": "departure_city",
+              "value": "Paris"
+            },
+            {
+              "key": "arrival_city",
+              "value": "Berlin"
+            },
+            {
+              "key": "train_type",
+              "value": "night"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Détail trajet 1",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/trips/1",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "trips",
+            "1"
+          ],
+          "query": []
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Arrêts trajet 1",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/trips/1/stops",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "trips",
+            "1",
+            "stops"
+          ],
+          "query": []
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Qualité - anomalies",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/quality?only_errors=true&limit=20",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "quality"
+          ],
+          "query": [
+            {
+              "key": "only_errors",
+              "value": "true"
+            },
+            {
+              "key": "limit",
+              "value": "20"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Statistiques types de train",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/stats/train-types",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "stats",
+            "train-types"
+          ],
+          "query": []
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Statistiques sources",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/stats/sources",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "stats",
+            "sources"
+          ],
+          "query": []
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Statistiques qualité",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/stats/quality",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "stats",
+            "quality"
+          ],
+          "query": []
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Gares par pays",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/stats/stations-by-country",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "stats",
+            "stations-by-country"
+          ],
+          "query": []
+        }
+      },
+      "response": []
+    }
+  ]
+}
